@@ -1,7 +1,3 @@
-# 𝐓𝐞𝐥𝐞𝐠𝐫𝐚𝐦: https://t.me/scriptdung
-# 𝐁𝐚𝐜𝐤𝐮𝐩: https://t.me/scriptdungbackup
-# 𝐃𝐞𝐯: @Xoarch (Converted to Telegram Bot)
-
 import telebot
 import asyncio
 import aiohttp
@@ -17,7 +13,6 @@ from api import process_card, parse_cc_string, extract_clean_response
 # ==========================================
 # CONFIGURATION & SECURITY
 # ==========================================
-# Env မှ Token ကို လုံခြုံစွာ ဆွဲယူမည်
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 if not BOT_TOKEN:
@@ -27,7 +22,7 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML", threaded=True)
 app = Flask(__name__)
 
-# အသုံးပြုခွင့်ရှိသူများ (သင်၏ ID ကို ပင်မ Admin အဖြစ် သတ်မှတ်ထားသည်)
+# အသုံးပြုခွင့်ရှိသူများ
 ADMIN_ID = 1847021130
 AUTHORIZED_USERS = {ADMIN_ID}
 
@@ -54,7 +49,7 @@ DEAD_KEYWORDS = [
 ]
 
 # ==========================================
-# ACCESS CONTROL (လုံခြုံရေးစစ်ဆေးခြင်း)
+# ACCESS CONTROL
 # ==========================================
 def is_authorized(user_id):
     return user_id in AUTHORIZED_USERS
@@ -174,6 +169,7 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
             }
             status_disp = status_map.get(category, "🟠 <b>𝐄𝐫𝐫𝐨𝐫</b>")
 
+            # Developer Name ဖြုတ်ထားပါသည်
             final_text = (
                 f"ア 𝐂𝐚𝐫𝐝 -» <code>{cc_string}</code>\n"
                 f"カ 𝙎𝙩𝙖𝙩𝙪𝙨 -» {status_disp}\n"
@@ -184,8 +180,7 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
                 f"零 𝙄𝙣𝙛𝙤 -» {info_str}\n"
                 f"零 𝘽𝙖𝙣𝙠 -» {bank}\n"
                 f"零 𝘾𝙤𝙪𝗻𝘁𝗿𝐲 -» {country} {flag}\n"
-                f"━━━━━━━━━━━━━\n"
-                f"力 𝐃𝐞𝐯 -» @Xoarch"
+                f"━━━━━━━━━━━━━"
             )
 
             if msg_to_edit:
@@ -204,13 +199,18 @@ def send_welcome(message):
     if not is_authorized(message.from_user.id):
         bot.reply_to(message, "🚫 <b>ခွင့်ပြုချက်မရှိပါ။</b> ဤ Bot အား အသုံးပြုခွင့် မရှိပါ။")
         return
+    bot.reply_to(message, "မင်္ဂလာပါ၊ Command များကို ကြည့်ရှုရန် /cmd ကိုနှိပ်ပါ။")
+
+@bot.message_handler(commands=['cmd'])
+def send_cmd(message):
+    if not is_authorized(message.from_user.id):
+        bot.reply_to(message, "🚫 <b>ခွင့်ပြုချက်မရှိပါ။</b> ဤ Bot အား အသုံးပြုခွင့် မရှိပါ။")
+        return
         
     text = (
         "<b>🔥 Auto Shopify Checker Bot 🔥</b>\n\n"
-        "အသုံးပြုနည်း (Site မထည့်လည်းရသည်):\n"
+        "အသုံးပြုနည်း:\n"
         "<code>/chk 5275150060415544|05|27|803</code>\n\n"
-        "Site ကိုယ်တိုင် သတ်မှတ်လိုပါက:\n"
-        "<code>/chk paradoxbrewery.com 5275150060415544|05|27|803</code>\n\n"
         "<b>Admin Commands:</b>\n"
         "<code>/add UserID</code> (အခြားသူကို အသုံးပြုခွင့်ပေးရန်)\n"
         "<code>/rm UserID</code> (အသုံးပြုခွင့် ပြန်ပိတ်ရန်)"
@@ -250,12 +250,10 @@ def check_single(message):
 
     args = message.text.split()
     
+    # User က /chk cc|mm|yy|cvv သာ ထည့်ရမည်။ (Site လက်မခံတော့ပါ)
     if len(args) == 2:
         site = get_auto_site()
         cc_string = args[1]
-    elif len(args) >= 3:
-        site = args[1]
-        cc_string = args[2]
     else:
         bot.reply_to(message, "❌ <b>အသုံးပြုနည်း မှားယွင်းနေပါသည်။</b>\nFormat: <code>/chk cc|mm|yy|cvv</code>")
         return

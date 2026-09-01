@@ -1,6 +1,6 @@
 # 𝐓𝐞𝐥𝐞𝐠𝐫𝐚𝐦: https://t.me/scriptdung
 # 𝐁𝐚𝐜𝐤𝐮𝐩: https://t.me/scriptdungbackup
-# 𝐃𝐞𝐯: @Xoarch (Converted to Telegram Bot)
+# 𝐃𝐞𝐯: @Xoarch (Stripe Telegram Bot)
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -12,12 +12,8 @@ from flask import Flask
 from threading import Thread
 import time
 
-# api.py မှ လိုအပ်သော လုပ်ဆောင်ချက်များ
 from api import process_card, parse_cc_string, extract_clean_response
 
-# ==========================================
-# CONFIGURATION & SECURITY
-# ==========================================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 if not BOT_TOKEN:
@@ -27,46 +23,21 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML", threaded=True)
 app = Flask(__name__)
 
-# အသုံးပြုခွင့်ရှိသူများ
 ADMIN_ID = 1847021130
 AUTHORIZED_USERS = {ADMIN_ID}
 
 WORKING_KEYWORDS = [
     'card_declined', 'fraud', 'incorrect_zip', 'invalid_cvc', 'invalid_cvv',
-    'insufficient_funds', 'otp_required', 'order_placed', 'declined',
-    'do_not_honor', 'incorrect_number', 'card_incorrect', 'expired_card',
-    'pickup_card', 'restricted_card', 'stolen_card', 'lost_card',
-    'card_velocity_exceeded', 'transaction_not_allowed', 'invalid_expiry',
-    'processing_error', 'call_issuer', 'try_again_later', 'fraudulent',
-    'security_violation', 'blocked', 'bad_cvv', 'cvv_fail',
-    'authentication_required', 'mismatched_bill', 'charged', 'approved',
-    'wrong_number', 'incorrect number', 'card incorrect'
+    'insufficient_funds', 'approved', 'declined', 'incorrect_number', 'expired_card',
+    'processing_error', 'call_issuer', 'try_again_later', 'fraudulent', 'security_violation'
 ]
 
 DEAD_KEYWORDS = [
-    'receipt id is empty', 'handle is empty', 'product id is empty',
-    'tax amount is empty', 'payment method identifier is empty',
-    'invalid url', 'error in 1st req', 'error in 1 req', 'cloudflare', 
-    'connection failed', 'timed out', 'access denied', 'site dead', 
-    'captcha_required', 'captcha required', 'no_session_token',
-    'generic_error', 'generic error', 'PAYMENTS_CREDIT_CARD_BASE_EXPIRED',
-    'Failed to get session token', 'site not supported'
+    'proxy/network error', 'error', 'timed out', 'connection failed'
 ]
 
 def is_authorized(user_id):
     return user_id in AUTHORIZED_USERS
-
-def get_auto_site(exclude_site=None):
-    try:
-        with open("sites.txt", "r", encoding="utf-8") as f:
-            sites = [line.strip() for line in f if line.strip()]
-            if exclude_site and exclude_site in sites and len(sites) > 1:
-                sites.remove(exclude_site)
-            if sites:
-                return random.choice(sites)
-    except Exception:
-        pass
-    return "https://paradoxbrewery.com"
 
 async def get_bin_info(session, cc):
     try:
@@ -88,12 +59,9 @@ async def get_bin_info(session, cc):
 
 def classify_result(success, message):
     msg = message.lower()
-    if 'order_placed' in msg: return 'charged'
-    if 'otp_required' in msg: return 'tds'
-    if any(k in msg for k in ['approved', 'insufficient', 'cvv', 'cvc', 'zip', 'incorrect_zip', 'invalid_cvv', 'invalid_cvc', 'insufficient_funds']): return 'approved'
+    if 'insufficient_funds' in msg: return 'approved'
+    if any(k in msg for k in ['approved', 'success', 'cvv', 'cvc', 'zip', 'incorrect_zip', 'invalid_cvv', 'invalid_cvc']): return 'approved'
     if success: return 'declined'
-    if any(kw in msg for kw in WORKING_KEYWORDS): return 'declined'
-    if any(k in msg for k in DEAD_KEYWORDS): return 'error'
     return 'error'
 
 def fmt_price(price, currency):
@@ -108,18 +76,16 @@ def fmt_info(brand, type_cc, level):
         return f"{brand} - {type_cc.upper()} - {level.upper()}"
     return f"{brand} - {type_cc.upper()}"
 
-async def run_with_retry(parts, site, proxy_str=None, max_retries=2):
-    last_success, last_msg, last_gate, last_price, last_cur = False, 'ERROR', '', '0', 'USD'
+async def run_with_retry(parts, proxy_str=None, max_retries=2):
+    last_success, last_msg, last_gate, last_price, last_cur = False, 'ERROR', 'Stripe Charge', '1.00', 'USD'
     for attempt in range(max_retries):
         try:
             success, message, gateway, price, currency = await process_card(
-                parts['cc'], parts['mes'], parts['ano'], parts['cvv'], site, None, proxy_str
+                parts['cc'], parts['mes'], parts['ano'], parts['cvv'], "stripe", None, proxy_str
             )
             category = classify_result(success, message)
-            if category != 'error' or any(k in message.lower() for k in WORKING_KEYWORDS):
+            if category != 'error':
                 return success, message, gateway, price, currency, category
-            if any(kw in message.lower() for kw in DEAD_KEYWORDS):
-                break
             if attempt < max_retries - 1: await asyncio.sleep(1)
         except Exception as e:
             last_msg = f"Error: {str(e)}"
@@ -127,7 +93,7 @@ async def run_with_retry(parts, site, proxy_str=None, max_retries=2):
             else: break
     return last_success, last_msg, last_gate, last_price, last_cur, 'error'
 
-def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
+def run_async_task(chat_id, cc_string, msg_to_edit=None):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
@@ -139,26 +105,17 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
             return
 
         async with aiohttp.ClientSession() as session:
-            current_site = site if site.startswith('http') else 'https://' + site
-            success, message, gateway, price, currency, category = await run_with_retry(parts, current_site)
-            
-            if category == 'error':
-                if msg_to_edit: bot.edit_message_text(f"⚠️ <b>Site Error! Retrying...</b> <code>{cc_string}</code>", chat_id, msg_to_edit)
-                new_site = get_auto_site(exclude_site=current_site)
-                new_site = new_site if new_site.startswith('http') else 'https://' + new_site
-                success, message, gateway, price, currency, category = await run_with_retry(parts, new_site)
+            success, message, gateway, price, currency, category = await run_with_retry(parts)
 
             clean = extract_clean_response(message)
-            if category == 'charged': clean = 'ORDER_PLACED'
-            elif category == 'tds': clean = 'OTP_REQUIRED'
-            
             brand, bank, country, level, type_cc, flag = await get_bin_info(session, parts['cc'])
             price_fmt = fmt_price(price, currency)
             info_str = fmt_info(brand, type_cc, level)
 
             status_map = {
-                'charged': "🟢 <b>𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥</b>", 'approved': "🔵 <b>𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ✅</b>",
-                'tds': "🟡 <b>𝟑𝐃𝐒 ❎</b>", 'declined': "🔴 <b>𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝</b>", 'error': "🟠 <b>𝐄𝐫𝐫𝐨𝐫</b>"
+                'approved': "🔵 <b>𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ✅</b>",
+                'declined': "🔴 <b>𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝</b>",
+                'error': "🟠 <b>𝐄𝐫𝐫𝐨𝐫</b>"
             }
             status_disp = status_map.get(category, "🟠 <b>𝐄𝐫𝐫𝐨𝐫</b>")
 
@@ -166,7 +123,7 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
                 f"💳 𝐂𝐚𝐫𝐝 -» <code>{cc_string}</code>\n"
                 f"📊 𝙎𝙩𝙖𝙩𝙪𝙨 -» {status_disp}\n"
                 f"💬 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 -» <b>{clean}</b>\n"
-                f"🛒 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 -» <b>𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲</b>\n"
+                f"🛒 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 -» <b>Stripe Charge</b>\n"
                 f"💲 𝐏𝐫𝐢𝐜𝐞 -» <b>{price_fmt}</b>\n"
                 f"━━━━━━━━━━━━━\n"
                 f"ℹ️ 𝙄𝙣𝙛𝙤 -» {info_str}\n"
@@ -183,14 +140,10 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
 
 def process_mass(chat_id, cards):
     for cc in cards:
-        site = get_auto_site()
         msg = bot.send_message(chat_id, f"⏳ <b>Checking:</b> <code>{cc}</code>")
-        Thread(target=run_async_task, args=(chat_id, site, cc, msg.message_id)).start()
-        time.sleep(15) 
+        Thread(target=run_async_task, args=(chat_id, cc, msg.message_id)).start()
+        time.sleep(3) # Stripe အတွက် ၃ စက္ကန့်ခြားပေးခြင်း
 
-# ==========================================
-# ADMIN PROXY CONTROL PANEL
-# ==========================================
 @bot.message_handler(commands=['admin', 'panel'])
 def admin_panel(message):
     if message.from_user.id != ADMIN_ID:
@@ -210,7 +163,7 @@ def callback_query(call):
         return
         
     if call.data == "add_proxy":
-        msg = bot.send_message(call.message.chat.id, "✏️ <b>Proxy အသစ်များကို အောက်ပါအတိုင်း (တစ်ကြောင်းလျှင်တစ်ခု) ပေးပို့ပါ:</b>\n\n<code>ip:port:user:pass\nip:port:user:pass</code>")
+        msg = bot.send_message(call.message.chat.id, "✏️ <b>Proxy အသစ်များကို အောက်ပါအတိုင်း (တစ်ကြောင်းလျှင်တစ်ခု) ပေးပို့ပါ:</b>\n\n<code>ip:port:user:pass</code>")
         bot.register_next_step_handler(msg, process_add_proxy)
         
     elif call.data == "clear_proxy":
@@ -237,9 +190,6 @@ def process_add_proxy(message):
                 
     bot.reply_to(message, f"✅ Proxy အသစ် {len(lines)} ခု အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။")
 
-# ==========================================
-# BOT COMMANDS
-# ==========================================
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     if not is_authorized(message.from_user.id):
@@ -253,7 +203,7 @@ def send_cmd(message):
         return
         
     text = (
-        "<b>🔥 Auto Shopify Checker Bot 🔥</b>\n\n"
+        "<b>🔥 Stripe Checker Bot 🔥</b>\n\n"
         "<b>(၁) Single Check:</b>\n<code>/chk 5275150060415544|05|27|803</code>\n\n"
         "<b>(၂) Mass Check:</b>\n<code>/chk mass\n5275150060415544|05|27|803\n4031630597626141|02|29|970</code>\n"
     )
@@ -305,19 +255,15 @@ def check_command(message):
         Thread(target=process_mass, args=(message.chat.id, cards)).start()
     else:
         if len(first_line_args) == 2:
-            site = get_auto_site()
             cc_string = first_line_args[1]
             msg = bot.reply_to(message, f"⏳ <b>Checking Card...</b>")
-            Thread(target=run_async_task, args=(message.chat.id, site, cc_string, msg.message_id)).start()
+            Thread(target=run_async_task, args=(message.chat.id, cc_string, msg.message_id)).start()
         else:
             bot.reply_to(message, "❌ <b>အသုံးပြုနည်း မှားယွင်းနေပါသည်။</b>")
 
-# ==========================================
-# WEB SERVER
-# ==========================================
 @app.route('/')
 def index():
-    return "Bot is running perfectly and secured!"
+    return "Stripe Bot is running perfectly!"
 
 def run_server():
     port = int(os.environ.get("PORT", 8080))
@@ -325,11 +271,9 @@ def run_server():
 
 if __name__ == "__main__":
     Thread(target=run_server, daemon=True).start()
-    # Ensure proxies file exists
     if not os.path.exists("proxies.txt"):
         open("proxies.txt", "w").close()
     
-    # Pre-load initial proxies if they don't exist
     try:
         with open("proxies.txt", "r") as f:
             if not f.read().strip():
@@ -351,5 +295,5 @@ if __name__ == "__main__":
     except:
         pass
 
-    print("Secured Bot Started...")
+    print("Stripe Bot Started...")
     bot.infinity_polling(timeout=20, long_polling_timeout=20)

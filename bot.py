@@ -1,3 +1,7 @@
+# 𝐓𝐞𝐥𝐞𝐠𝐫𝐚𝐦: https://t.me/scriptdung
+# 𝐁𝐚𝐜𝐤𝐮𝐩: https://t.me/scriptdungbackup
+# 𝐃𝐞𝐯: @Xoarch (Converted to Telegram Bot)
+
 import telebot
 import asyncio
 import aiohttp
@@ -45,7 +49,7 @@ DEAD_KEYWORDS = [
     'connection failed', 'timed out', 'access denied', 'site dead', 
     'captcha_required', 'captcha required', 'no_session_token',
     'generic_error', 'generic error', 'PAYMENTS_CREDIT_CARD_BASE_EXPIRED',
-    'Failed to get session token'
+    'Failed to get session token', 'site not supported'
 ]
 
 # ==========================================
@@ -57,10 +61,12 @@ def is_authorized(user_id):
 # ==========================================
 # AUTO SITE PICKER
 # ==========================================
-def get_auto_site():
+def get_auto_site(exclude_site=None):
     try:
         with open("sites.txt", "r", encoding="utf-8") as f:
             sites = [line.strip() for line in f if line.strip()]
+            if exclude_site and exclude_site in sites and len(sites) > 1:
+                sites.remove(exclude_site)
             if sites:
                 return random.choice(sites)
     except Exception:
@@ -110,7 +116,7 @@ def fmt_info(brand, type_cc, level):
         return f"{brand} - {type_cc.upper()} - {level.upper()}"
     return f"{brand} - {type_cc.upper()}"
 
-async def run_with_retry(parts, site, proxy_str=None, max_retries=3):
+async def run_with_retry(parts, site, proxy_str=None, max_retries=2):
     last_success, last_msg, last_gate, last_price, last_cur = False, 'ERROR', '', '0', 'USD'
     for attempt in range(max_retries):
         try:
@@ -144,14 +150,21 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
                 bot.edit_message_text(f"❌ <b>Format Error:</b> {e}", chat_id, msg_to_edit)
             return
 
-        if not site.startswith('http'):
-            site_url = 'https://' + site
-        else:
-            site_url = site
-
         async with aiohttp.ClientSession() as session:
-            success, message, gateway, price, currency, category = await run_with_retry(parts, site_url)
+            # ပထမ Site ဖြင့် စမ်းသပ်ခြင်း
+            current_site = site if site.startswith('http') else 'https://' + site
+            success, message, gateway, price, currency, category = await run_with_retry(parts, current_site)
             
+            # Error တက်ပါက နောက်ထပ် Site တစ်ခုဖြင့် အလိုအလျောက် ထပ်စမ်းပေးမည် (Auto-Fallback)
+            if category == 'error':
+                if msg_to_edit:
+                    bot.edit_message_text(f"⚠️ <b>Site Error! Retrying with another site...</b>", chat_id, msg_to_edit)
+                
+                new_site = get_auto_site(exclude_site=current_site)
+                new_site = new_site if new_site.startswith('http') else 'https://' + new_site
+                success, message, gateway, price, currency, category = await run_with_retry(parts, new_site)
+
+            # Response သန့်စင်ခြင်း
             clean = extract_clean_response(message)
             if category == 'charged': clean = 'ORDER_PLACED'
             elif category == 'tds': clean = 'OTP_REQUIRED'
@@ -169,17 +182,17 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
             }
             status_disp = status_map.get(category, "🟠 <b>𝐄𝐫𝐫𝐨𝐫</b>")
 
-            # Developer Name ဖြုတ်ထားပါသည်
+            # Emoji များဖြင့် အသစ်ပြင်ဆင်ထားသော ပုံစံ
             final_text = (
-                f"ア 𝐂𝐚𝐫𝐝 -» <code>{cc_string}</code>\n"
-                f"カ 𝙎𝙩𝙖𝙩𝙪𝙨 -» {status_disp}\n"
-                f"ツ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 -» <b>{clean}</b>\n"
-                f"キ 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 -» <b>𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲</b>\n"
-                f"千 𝐏𝐫𝐢𝐜𝐞 -» <b>{price_fmt}</b>\n"
+                f"💳 𝐂𝐚𝐫𝐝 -» <code>{cc_string}</code>\n"
+                f"📊 𝙎𝙩𝙖𝙩𝙪𝙨 -» {status_disp}\n"
+                f"💬 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 -» <b>{clean}</b>\n"
+                f"🛒 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 -» <b>𝐀𝐮𝐭𝐨 𝐒𝐡𝐨𝐩𝐢𝐟𝐲</b>\n"
+                f"💲 𝐏𝐫𝐢𝐜𝐞 -» <b>{price_fmt}</b>\n"
                 f"━━━━━━━━━━━━━\n"
-                f"零 𝙄𝙣𝙛𝙤 -» {info_str}\n"
-                f"零 𝘽𝙖𝙣𝙠 -» {bank}\n"
-                f"零 𝘾𝙤𝙪𝗻𝘁𝗿𝐲 -» {country} {flag}\n"
+                f"ℹ️ 𝙄𝙣𝙛𝙤 -» {info_str}\n"
+                f"🏦 𝘽𝙖𝙣𝙠 -» {bank}\n"
+                f"🌍 𝘾𝙤𝙪𝗻𝘁𝗿𝐲 -» {country} {flag}\n"
                 f"━━━━━━━━━━━━━"
             )
 
@@ -210,11 +223,17 @@ def send_cmd(message):
     text = (
         "<b>🔥 Auto Shopify Checker Bot 🔥</b>\n\n"
         "အသုံးပြုနည်း:\n"
-        "<code>/chk 5275150060415544|05|27|803</code>\n\n"
-        "<b>Admin Commands:</b>\n"
-        "<code>/add UserID</code> (အခြားသူကို အသုံးပြုခွင့်ပေးရန်)\n"
-        "<code>/rm UserID</code> (အသုံးပြုခွင့် ပြန်ပိတ်ရန်)"
+        "<code>/chk 5275150060415544|05|27|803</code>\n"
     )
+    
+    # Admin သာလျှင် Admin Commands များကို မြင်ရမည်
+    if message.from_user.id == ADMIN_ID:
+        text += (
+            "\n<b>Admin Commands:</b>\n"
+            "<code>/add UserID</code> (အခြားသူကို အသုံးပြုခွင့်ပေးရန်)\n"
+            "<code>/rm UserID</code> (အသုံးပြုခွင့် ပြန်ပိတ်ရန်)"
+        )
+        
     bot.reply_to(message, text)
 
 # --- ခွင့်ပြုချက်ပေးရန် / ပိတ်ရန် Commands များ (Admin သီးသန့်) ---
@@ -258,7 +277,7 @@ def check_single(message):
         bot.reply_to(message, "❌ <b>အသုံးပြုနည်း မှားယွင်းနေပါသည်။</b>\nFormat: <code>/chk cc|mm|yy|cvv</code>")
         return
 
-    msg = bot.reply_to(message, f"⏳ <b>Checking Card on {site}...</b>")
+    msg = bot.reply_to(message, f"⏳ <b>Checking Card...</b>")
     Thread(target=run_async_task, args=(message.chat.id, site, cc_string, msg.message_id)).start()
 
 # ==========================================

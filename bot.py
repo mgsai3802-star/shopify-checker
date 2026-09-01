@@ -151,20 +151,17 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
             return
 
         async with aiohttp.ClientSession() as session:
-            # ပထမ Site ဖြင့် စမ်းသပ်ခြင်း
             current_site = site if site.startswith('http') else 'https://' + site
             success, message, gateway, price, currency, category = await run_with_retry(parts, current_site)
             
-            # Error တက်ပါက နောက်ထပ် Site တစ်ခုဖြင့် အလိုအလျောက် ထပ်စမ်းပေးမည် (Auto-Fallback)
             if category == 'error':
                 if msg_to_edit:
-                    bot.edit_message_text(f"⚠️ <b>Site Error! Retrying with another site...</b>", chat_id, msg_to_edit)
+                    bot.edit_message_text(f"⚠️ <b>Site Error! Retrying...</b> <code>{cc_string}</code>", chat_id, msg_to_edit)
                 
                 new_site = get_auto_site(exclude_site=current_site)
                 new_site = new_site if new_site.startswith('http') else 'https://' + new_site
                 success, message, gateway, price, currency, category = await run_with_retry(parts, new_site)
 
-            # Response သန့်စင်ခြင်း
             clean = extract_clean_response(message)
             if category == 'charged': clean = 'ORDER_PLACED'
             elif category == 'tds': clean = 'OTP_REQUIRED'
@@ -182,7 +179,6 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
             }
             status_disp = status_map.get(category, "🟠 <b>𝐄𝐫𝐫𝐨𝐫</b>")
 
-            # Emoji များဖြင့် အသစ်ပြင်ဆင်ထားသော ပုံစံ
             final_text = (
                 f"💳 𝐂𝐚𝐫𝐝 -» <code>{cc_string}</code>\n"
                 f"📊 𝙎𝙩𝙖𝙩𝙪𝙨 -» {status_disp}\n"
@@ -204,6 +200,14 @@ def run_async_task(chat_id, site, cc_string, msg_to_edit=None):
     loop.run_until_complete(process_task())
     loop.close()
 
+def process_mass(chat_id, cards):
+    """Mass Checker အတွက် Thread များကို ခွဲ၍ Run ပေးမည်"""
+    for cc in cards:
+        site = get_auto_site()
+        msg = bot.send_message(chat_id, f"⏳ <b>Checking:</b> <code>{cc}</code>")
+        Thread(target=run_async_task, args=(chat_id, site, cc, msg.message_id)).start()
+        time.sleep(1) # Telegram API Error မတက်စေရန် ၁ စက္ကန့် ခြားပေးခြင်း
+
 # ==========================================
 # BOT COMMANDS
 # ==========================================
@@ -222,11 +226,12 @@ def send_cmd(message):
         
     text = (
         "<b>🔥 Auto Shopify Checker Bot 🔥</b>\n\n"
-        "အသုံးပြုနည်း:\n"
-        "<code>/chk 5275150060415544|05|27|803</code>\n"
+        "<b>(၁) Single Check အသုံးပြုနည်း:</b>\n"
+        "<code>/chk 5275150060415544|05|27|803</code>\n\n"
+        "<b>(၂) Mass Check အသုံးပြုနည်း (၁၀ ကတ်အထိ):</b>\n"
+        "<code>/chk mass\n5275150060415544|05|27|803\n4031630597626141|02|29|970</code>\n"
     )
     
-    # Admin သာလျှင် Admin Commands များကို မြင်ရမည်
     if message.from_user.id == ADMIN_ID:
         text += (
             "\n<b>Admin Commands:</b>\n"
@@ -236,7 +241,7 @@ def send_cmd(message):
         
     bot.reply_to(message, text)
 
-# --- ခွင့်ပြုချက်ပေးရန် / ပိတ်ရန် Commands များ (Admin သီးသန့်) ---
+# --- Admin Commands ---
 @bot.message_handler(commands=['add'])
 def add_user(message):
     if message.from_user.id != ADMIN_ID: return
@@ -262,23 +267,42 @@ def remove_user(message):
 
 # --- Checker Command ---
 @bot.message_handler(commands=['chk'])
-def check_single(message):
+def check_command(message):
     if not is_authorized(message.from_user.id):
         bot.reply_to(message, "🚫 <b>ခွင့်ပြုချက်မရှိပါ။</b> ဤ Bot အား အသုံးပြုခွင့် မရှိပါ။")
         return
 
-    args = message.text.split()
-    
-    # User က /chk cc|mm|yy|cvv သာ ထည့်ရမည်။ (Site လက်မခံတော့ပါ)
-    if len(args) == 2:
-        site = get_auto_site()
-        cc_string = args[1]
-    else:
-        bot.reply_to(message, "❌ <b>အသုံးပြုနည်း မှားယွင်းနေပါသည်။</b>\nFormat: <code>/chk cc|mm|yy|cvv</code>")
-        return
+    lines = message.text.strip().split('\n')
+    first_line_args = lines[0].split()
 
-    msg = bot.reply_to(message, f"⏳ <b>Checking Card...</b>")
-    Thread(target=run_async_task, args=(message.chat.id, site, cc_string, msg.message_id)).start()
+    if len(first_line_args) > 1 and first_line_args[1].lower() == 'mass':
+        # Mass Checking Mode
+        cards = []
+        for line in lines[1:]:
+            clean_line = line.strip()
+            if clean_line:
+                cards.append(clean_line)
+        
+        if not cards:
+            bot.reply_to(message, "❌ <b>ကတ်နံပါတ်များ မတွေ့ပါ။</b>\n\nအသုံးပြုနည်း:\n<code>/chk mass\ncc1|mm|yy|cvv\ncc2|mm|yy|cvv</code>")
+            return
+        
+        if len(cards) > 10:
+            bot.reply_to(message, "⚠️ <b>တစ်ကြိမ်လျှင် ကတ် (၁၀) ကတ်သာ အများဆုံး စစ်ဆေးနိုင်ပါသည်။</b>")
+            cards = cards[:10]
+
+        bot.reply_to(message, f"⏳ <b>Mass Checking {len(cards)} Cards...</b>")
+        Thread(target=process_mass, args=(message.chat.id, cards)).start()
+
+    else:
+        # Single Checking Mode
+        if len(first_line_args) == 2:
+            site = get_auto_site()
+            cc_string = first_line_args[1]
+            msg = bot.reply_to(message, f"⏳ <b>Checking Card...</b>")
+            Thread(target=run_async_task, args=(message.chat.id, site, cc_string, msg.message_id)).start()
+        else:
+            bot.reply_to(message, "❌ <b>အသုံးပြုနည်း မှားယွင်းနေပါသည်။</b>\nSingle: <code>/chk cc|mm|yy|cvv</code>\nMass: <code>/chk mass</code>")
 
 # ==========================================
 # WEB SERVER

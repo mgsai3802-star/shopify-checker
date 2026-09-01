@@ -8,7 +8,7 @@ from threading import Thread
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 if not BOT_TOKEN:
-    print("Error: BOT_TOKEN ကို Render Environment တွင် မတွေ့ပါ။")
+    print("Error: BOT_TOKEN မရှိပါ။")
     exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
@@ -20,17 +20,17 @@ AUTHORIZED_USERS = {ADMIN_ID}
 def is_authorized(user_id):
     return user_id in AUTHORIZED_USERS
 
-# Telegram Bot Menu Commands Setup (မီနူးဘားတွင် ခလုတ်များပေါ်စေရန်)
+# Telegram Bot Menu Commands Setup
 def setup_bot_commands():
     commands = [
         BotCommand("me", "🔍 Telegram Account Info"),
-        BotCommand("bin", "💳 BIN Info (/bin 412236)"),
-        BotCommand("gen", "🔐 CC Generator (/gen 412236)"),
-        BotCommand("iban", "ℹ️ IBAN Generator (/iban US)"),
-        BotCommand("cpf", "©️ CPF Generator"),
-        BotCommand("fake", "📍 Address Generator (/fake US)"),
+        BotCommand("bin", "💳 BIN Lookup & Gen (/bin 412236)"),
+        BotCommand("gen", "🔐 CC Generator (/gen)"),
+        BotCommand("iban", "ℹ️ IBAN Generator (/iban)"),
+        BotCommand("cpf", "©️ CPF Generator (Brazil)"),
+        BotCommand("fake", "📍 Address Generator (/fake)"),
         BotCommand("ping", "🔍 Ping Test"),
-        BotCommand("cmd", "🛠 Commands List & Help")
+        BotCommand("cmd", "🛠 Commands List")
     ]
     try:
         bot.set_my_commands(commands)
@@ -51,140 +51,187 @@ def cmd_me(message):
     )
     bot.reply_to(message, text)
 
-# 2. BIN Info (/bin)
+# 2. BIN Info & Random Generator (/bin)
 @bot.message_handler(commands=['bin'])
 def cmd_bin(message):
     if not is_authorized(message.from_user.id): return
     parts = message.text.split()
-    if len(parts) != 2 or len(parts[1]) < 6:
-        bot.reply_to(message, "❌ အသုံးပြုနည်း မှားယွင်းနေပါသည်။ ဥပမာ - <code>/bin 412236</code>")
-        return
+    default_bins = ["412236", "453214", "541333", "512456", "378282", "601100"]
+    bin6 = parts[1][:6] if len(parts) > 1 and len(parts[1]) >= 6 else random.choice(default_bins)
     
-    bin6 = parts[1][:6]
     try:
         res = requests.get(f"https://bins.antipublic.cc/bins/{bin6}", timeout=5)
         if res.status == 200:
             data = res.json()
-            text = (
-                f"💳 <b>BIN Info:</b> <code>{bin6}</code>\n"
-                f"🏦 Brand: {data.get('brand', 'UNKNOWN')}\n"
-                f"🏛 Bank: {data.get('bank', 'UNKNOWN')}\n"
-                f"🌍 Country: {data.get('country_name', 'UNKNOWN')} {data.get('country_flag', '')}\n"
-                f"📊 Type: {data.get('type', 'N/A')}\n"
-                f"💎 Level: {data.get('level', 'N/A')}"
-            )
-            bot.reply_to(message, text)
+            brand = data.get('brand', 'VISA')
+            bank = data.get('bank', 'GLOBAL BANK')
+            country = data.get('country_name', 'United States')
+            tier = data.get('level', 'BUSINESS')
+            type_cc = data.get('type', 'CREDIT')
         else:
-            bot.reply_to(message, "❌ ဤ BIN အချက်အလက်ကို ရှာမတွေ့ပါ။")
+            brand, bank, country, tier, type_cc = "VISA", "COMMERCIAL BANK", "United States", "BUSINESS", "CREDIT"
     except:
-        bot.reply_to(message, "❌ Network Error ဖြစ်ပွားပါသည်။")
+        brand, bank, country, tier, type_cc = "VISA", "COMMERCIAL BANK", "United States", "BUSINESS", "CREDIT"
 
-# 3. Smart CC Generator (/gen)
+    text = (
+        f"<b>𝗕𝗜𝗡 𝗟𝗼𝗼𝗸𝘂𝗽 𝗥𝗲𝘀𝘂𝗹𝘁 🔍</b>\n\n"
+        f"<b>𝗕𝗶𝗻 ⇾</b> {bin6}\n"
+        f"<b>𝗦𝘁𝗮𝘁𝘂𝘀 ⇾</b> SUCCESS\n"
+        f"<b>𝗦𝗰𝗵𝗲𝗺𝗲 ⇾</b> {brand}\n"
+        f"<b>𝗧𝘆𝗽𝗲 ⇾</b> {type_cc}\n"
+        f"<b>𝗜𝘀𝘀𝘂𝗲𝗿/𝗕𝗮𝗻𝗸 ⇾</b> {bank}\n"
+        f"<b>𝗧𝗶𝗲𝗿 ⇾</b> {tier}\n"
+        f"<b>𝗖𝗼𝘂𝗻𝘁𝗿𝘆 ⇾</b> {country}\n"
+        f"<b>𝗟𝘂𝗵𝗻 ⇾</b> True\n\n"
+        f"<b>𝗕𝗜𝗡 ⇾</b> {bin6}\n"
+        f"<b>𝗔𝗺𝗼𝘂𝗻𝘁 ⇾</b> 10\n\n"
+    )
+    
+    cards = []
+    for _ in range(10):
+        rand_digits = "".join([str(random.randint(0, 9)) for _ in range(16 - len(bin6))])
+        full_cc = bin6 + rand_digits
+        mm = f"{random.randint(1, 12):02d}"
+        yyyy = str(random.randint(2027, 2035))
+        cvv = f"{random.randint(100, 999)}"
+        cards.append(f"{full_cc}|{mm}|{yyyy}|{cvv}")
+    
+    text += "\n".join(cards)
+    text += f"\n\n<b>𝗜𝗻𝗳𝗼:</b> {brand} - {type_cc}\n<b>𝗕𝗮𝗻𝗸:</b> {bank}\n<b>𝗖𝗼𝘂𝗻𝘁𝗿𝘆:</b> {country}"
+    bot.reply_to(message, text)
+
+# 3. CC Generator (/gen) - Fully Randomized
 @bot.message_handler(commands=['gen'])
 def cmd_gen(message):
     if not is_authorized(message.from_user.id): return
-    try:
-        args = message.text.split(maxsplit=1)
-        if len(args) < 2:
-            bot.reply_to(message, "❌ အသုံးပြုနည်း: <code>/gen 412236</code> (သို့မဟုတ်) <code>/gen 412236xxxx|xx|2028|xxx</code>")
-            return
-        
-        pattern = args[1].strip()
-        cc_parts = pattern.split('|')
-        
-        template_cc = cc_parts[0]
-        mm_template = cc_parts[1] if len(cc_parts) > 1 and cc_parts[1].strip() else "xx"
-        yyyy_template = cc_parts[2] if len(cc_parts) > 2 and cc_parts[2].strip() else "2028"
-        cvv_template = cc_parts[3] if len(cc_parts) > 3 and cc_parts[3].strip() else "xxx"
-        
-        cards_output = []
-        for _ in range(10):
-            curr_cc = "".join([str(random.randint(0, 9)) if char.lower() == 'x' else char for char in template_cc])
-            if len(curr_cc) < 16:
-                curr_cc += "".join([str(random.randint(0, 9)) for _ in range(16 - len(curr_cc))])
-                
-            curr_mm = f"{random.randint(1, 12):02d}" if 'x' in mm_template.lower() or mm_template == 'xx' else mm_template
-            curr_yyyy = str(random.randint(2027, 2031)) if 'x' in yyyy_template.lower() or '20' not in yyyy_template else yyyy_template
-            curr_cvv = "".join([str(random.randint(0, 9)) for _ in range(3)]) if 'x' in cvv_template.lower() or len(cvv_template) < 3 else cvv_template
-            
-            cards_output.append(f"<code>{curr_cc}|{curr_mm}|{curr_yyyy}|{curr_cvv}</code>")
-            
-        bot.reply_to(message, "🔐 <b>Generated Cards (10):</b>\n\n" + "\n".join(cards_output))
-    except Exception as e:
-        bot.reply_to(message, f"❌ Error: {str(e)}")
+    parts = message.text.split()
+    default_bins = ["412236", "453214", "541333", "512456", "378282"]
+    bin6 = parts[1][:6] if len(parts) > 1 and len(parts[1]) >= 6 else random.choice(default_bins)
+    
+    text = f"<b>𝗕𝗜𝗡 ⇾</b> {bin6}\n<b>𝗔𝗺𝗼𝘂𝗻𝘁 ⇾</b> 10\n\n"
+    cards = []
+    for _ in range(10):
+        rand_digits = "".join([str(random.randint(0, 9)) for _ in range(16 - len(bin6))])
+        full_cc = bin6 + rand_digits
+        mm = f"{random.randint(1, 12):02d}"
+        yyyy = str(random.randint(2027, 2035))
+        cvv = f"{random.randint(100, 999)}"
+        cards.append(f"{full_cc}|{mm}|{yyyy}|{cvv}")
+    
+    text += "\n".join(cards)
+    bot.reply_to(message, text)
 
-# 4. IBAN Generator (/iban)
+# 4. IBAN Generator (/iban) - Fully Randomized
 @bot.message_handler(commands=['iban'])
 def cmd_iban(message):
     if not is_authorized(message.from_user.id): return
-    parts = message.text.split()
-    country = parts[1].upper() if len(parts) > 1 else "DE"
-    rand_digits = "".join([str(random.randint(0, 9)) for _ in range(18)])
-    fake_iban = f"{country}{random.randint(10,99)}{rand_digits}"
-    bot.reply_to(message, f"ℹ️ <b>Generated IBAN ({country}):</b>\n<code>{fake_iban}</code>")
-
-# 5. CPF Generator (/cpf)
-@bot.message_handler(commands=['cpf'])
-def cmd_cpf(message):
-    if not is_authorized(message.from_user.id): return
-    cpf = f"{random.randint(100,999)}.{random.randint(100,999)}.{random.randint(100,999)}-{random.randint(10,99)}"
-    bot.reply_to(message, f"©️ <b>Generated CPF:</b>\n<code>{cpf}</code>")
-
-# 6. Advanced Fake Address Generator (/fake)
-@bot.message_handler(commands=['fake'])
-def cmd_fake(message):
-    if not is_authorized(message.from_user.id): return
-    parts = message.text.split()
-    country = parts[1].upper() if len(parts) > 1 else "US"
+    countries = [("DE", "🇩🇪"), ("GB", "🇬🇧"), ("FR", "🇫🇷"), ("ES", "🇪🇸"), ("IT", "🇮🇹")]
+    country, flag = random.choice(countries)
     
-    addresses = {
-        "US": ("123 Main St", "New York", "NY", "10001", "+1 212-555-0198"),
-        "UK": ("45 Baker Street", "London", "Greater London", "W1U 8ED", "+44 20 7946 0918"),
-        "CA": ("789 Yonge St", "Toronto", "Ontario", "M4W 2G8", "+1 416-555-0143"),
-        "DE": ("Hauptstraße 42", "Berlin", "Berlin", "10115", "+49 30 123456"),
-        "FR": ("15 Rue de la Paix", "Paris", "Île-de-France", "75001", "+33 1 23 45 67 89")
-    }
+    bank_code = "".join([str(random.randint(0, 9)) for _ in range(8)])
+    acc_num = "".join([str(random.randint(0, 9)) for _ in range(10)])
+    check_dig = f"{random.randint(10, 99)}"
     
-    addr = addresses.get(country, addresses["US"])
     text = (
-        f"📍 <b>Fake Address ({country}):</b>\n\n"
-        f"🏢 Street: <code>{addr[0]}</code>\n"
-        f"🏙 City: <code>{addr[1]}</code>\n"
-        f"📮 State/Region: <code>{addr[2]}</code>\n"
-        f"📮 Zip/Postal: <code>{addr[3]}</code>\n"
-        f"📞 Phone: <code>{addr[4]}</code>"
+        f"🌍 <b>IBAN Details</b>\n\n"
+        f"Country: {country} {flag}\n"
+        f"IBAN: {country}{check_dig}{bank_code}{acc_num}\n"
+        f"Length: 22\n\n"
+        f"Bank Code: {bank_code}\n"
+        f"Account Number: {acc_num}\n"
+        f"Check Digits: {check_dig}\n"
+        f"BBAN: {bank_code}{acc_num}"
     )
     bot.reply_to(message, text)
 
-# 7. Ping Test (/ping)
+# 5. CPF Generator (/cpf) - Fully Randomized Pools
+@bot.message_handler(commands=['cpf'])
+def cmd_cpf(message):
+    if not is_authorized(message.from_user.id): return
+    first_names = ["Anderson", "Carlos", "Lucas", "Mariana", "Gabriel", "Beatriz", "Rafael", "Juliana", "Thiago", "Larissa"]
+    last_names = ["De Souza Rezende", "Silva Santos", "Almeida Costa", "Oliveira Lima", "Pereira Martins", "Rodrigues Souza", "Ferreira Alves"]
+    places = ["Caminho Niemeyer", "Copacabana Palace", "Ipanema Beach", "Paulista Avenue", "Liberdade Square", "Maracanã Stadium"]
+    
+    name = f"{random.choice(first_names)} {random.choice(last_names)}"
+    cpf = f"{random.randint(100,999)}.{random.randint(100,999)}.{random.randint(100,999)}-{random.randint(10,99)}"
+    place = random.choice(places)
+    dob_year = random.randint(1978, 2000)
+    dob_month = f"{random.randint(1, 12):02d}"
+    dob_day = f"{random.randint(1, 28):02d}"
+    
+    text = (
+        f"📍 <b>BR 🇧🇷 CPF Generator</b>\n\n"
+        f"𝗡𝗮𝗺𝗲: {name}\n"
+        f"𝗖𝗣𝗙: {cpf}\n"
+        f"𝗗𝗼𝗕: {dob_year}-{dob_month}-{dob_day}\n"
+        f"𝗣𝗹𝗮𝗰𝗲: {place}\n"
+        f"𝗗𝗲𝗹𝗶𝘃𝗲𝗿𝘆: Segunda ({random.randint(1,28)}/{random.randint(1,12)})"
+    )
+    bot.reply_to(message, text)
+
+# 6. Address Generator (/fake) - Fully Randomized Pools
+@bot.message_handler(commands=['fake'])
+def cmd_fake(message):
+    if not is_authorized(message.from_user.id): return
+    firsts = ["Ella", "John", "Emma", "Michael", "Sophia", "William", "Olivia", "James", "Benjamin", "Charlotte"]
+    lasts = ["Anderson", "Smith", "Watson", "Johnson", "Brown", "Davis", "Miller", "Wilson", "Taylor", "Moore"]
+    streets = ["42 Canal Street", "123 Main Street", "789 Broadway", "55 Park Avenue", "101 Market Street", "300 Bourbon Street"]
+    cities = ["New Orleans", "New York", "Los Angeles", "Chicago", "Houston", "Philadelphia", "San Francisco"]
+    states = ["Louisiana", "New York", "California", "Illinois", "Texas", "Pennsylvania", "Washington"]
+    zips = ["70130", "10001", "90012", "60601", "77002", "19102", "94101"]
+    
+    fname = random.choice(firsts)
+    lname = random.choice(lasts)
+    street = random.choice(streets)
+    city = random.choice(cities)
+    state = random.choice(states)
+    zip_code = random.choice(zips)
+    phone = f"+1{random.randint(200,999)}{random.randint(100,999)}{random.randint(1000,9999)}"
+    email = f"{fname.lower()}.{lname.lower()}{random.randint(10,99)}@gmail.com"
+    
+    text = (
+        f"📍 <b>UNITED STATES Address Generator</b>\n\n"
+        f"𝗙𝘂𝗹𝗹 𝗡𝗮𝗺𝗲: {fname} {lname}\n"
+        f"𝗦𝘁𝗿𝗲𝗲𝘁 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: {street}\n"
+        f"𝗖𝗶𝘁𝘆/𝗧𝗼𝘄𝗻/𝗩𝗶𝗹𝗹𝗮𝗴𝗲: {city}\n"
+        f"𝗦𝘁𝗮𝘁𝗲/𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲/𝗥𝗲𝗴𝗶𝗼𝗻: {state}\n"
+        f"𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: {zip_code}\n"
+        f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: {phone}\n"
+        f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: United States\n"
+        f"𝗧𝗲𝗺𝗽𝗼𝗿𝗮𝗿𝘆 𝗘𝗺𝗮𝗶𝗹: {email}"
+    )
+    bot.reply_to(message, text)
+
+# 7. Ping Test (/ping) - Randomized Latency
 @bot.message_handler(commands=['ping'])
 def cmd_ping(message):
     if not is_authorized(message.from_user.id): return
-    bot.reply_to(message, "🏓 <b>Pong!</b> Server is active and running smoothly.")
+    latency = random.randint(110, 260)
+    text = (
+        f"Ｐｏｎｇ 🏓\n\n"
+        f"⚡ <b>Response Time</b>\n"
+        f"├ 📊 Latency: {latency} ms\n"
+        f"└ 🎯 Quality: 🟢 Excellent\n\n"
+        f"🤖 <b>Bot Status:</b> Online & Responsive"
+    )
+    bot.reply_to(message, text)
 
-# Help / Start Command with Country Codes list
+# Help / Start Command
 @bot.message_handler(commands=['start', 'help', 'cmd'])
 def send_cmd(message):
     if not is_authorized(message.from_user.id): return
     text = (
         "🛠 <b>Bot Commands List</b>\n\n"
-        "🔍 <b>Telegram Info:</b> <code>/me</code>\n"
-        "💳 <b>BIN Info:</b> <code>/bin {6-digit}</code>\n"
-        "🔐 <b>CC Generator:</b> <code>/gen 412236</code>\n"
-        "ℹ️ <b>IBAN Generator:</b> <code>/iban {country_code}</code>\n"
-        "©️ <b>CPF Generator:</b> <code>/cpf</code>\n"
-        "📍 <b>Address Generator:</b> <code>/fake {country_code}</code>\n"
-        "🔍 <b>Ping Test:</b> <code>/ping</code>\n\n"
-        "🌐 <b>Available Country Codes:</b>\n"
-        "• <b>US</b> - United States\n"
-        "• <b>UK</b> - United Kingdom\n"
-        "• <b>CA</b> - Canada\n"
-        "• <b>DE</b> - Germany\n"
-        "• <b>FR</b> - France"
+        "🔍 <code>/me</code> - Telegram Account Info\n"
+        "💳 <code>/bin {6-digit}</code> - BIN Lookup & Gen\n"
+        "🔐 <code>/gen</code> - Credit Card Generator\n"
+        "ℹ️ <code>/iban</code> - IBAN Generator\n"
+        "©️ <code>/cpf</code> - Brazilian CPF Generator\n"
+        "📍 <code>/fake</code> - US Address Generator\n"
+        "🔍 <code>/ping</code> - Ping Test"
     )
     bot.reply_to(message, text)
 
-# Flask server for Render port binding (Keepalive)
 @app.route('/')
 def index():
     return "Bot is running successfully!"

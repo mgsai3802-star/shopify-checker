@@ -117,7 +117,7 @@ def cmd_admin_menu(message):
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
     if is_banned(message.from_user.id): return
-    bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။", reply_markup=get_main_menu())
+    bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Genနှင့်Addressသည် Fommatမှန်က တန်းပို့နိုင်သည်။ (ဥပမာ-524554555|xx|xx|xxxနှင့် us/uk/de/etc....)", reply_markup=get_main_menu())
 
 # --- Direct Functions for Info & CPF ---
 def cmd_me(message):

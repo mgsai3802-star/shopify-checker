@@ -12,9 +12,6 @@ from flask import Flask, request, jsonify
 import os
 import time
 
-# ==========================================
-# PREMIUM PROXIES HANDLER
-# ==========================================
 PREMIUM_PROXIES = [
     "31.59.20.176:6754:klzmaipj:1ans3lrhk2lv",
     "45.38.107.97:6014:klzmaipj:1ans3lrhk2lv",
@@ -44,17 +41,11 @@ def parse_proxy(proxy_str):
         return None
     parts = proxy_str.split(':')
     if len(parts) == 2:
-        ip, port = parts
-        return f"http://{ip}:{port}"
+        return f"http://{parts[0]}:{parts[1]}"
     elif len(parts) == 4:
-        ip, port, user, password = parts
-        return f"http://{user}:{password}@{ip}:{port}"
-    else:
-        return None
+        return f"http://{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}"
+    return None
 
-# ==========================================
-# UTILS & HELPERS
-# ==========================================
 C2C = {"USD": "US", "CAD": "CA", "GBP": "GB", "EUR": "DE"}
 book = {
     "US": {"address1": "123 Main St", "city": "New York", "postalCode": "10001", "zoneCode": "NY", "countryCode": "US", "phone": "2125550198"},
@@ -102,26 +93,22 @@ async def fetch_products(domain, proxy_str=None):
         
         proxy = parse_proxy(proxy_str or get_auto_proxy())
         connector = aiohttp.TCPConnector(ssl=False)
-        timeout = aiohttp.ClientTimeout(total=12)
+        timeout = aiohttp.ClientTimeout(total=10)
         
         async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
             async with session.get(f"{domain}/products.json", proxy=proxy) as resp:
                 if resp.status != 200:
                     return False, f"Site Error: Status {resp.status}"
                 data = await resp.json()
-                products = data.get('products', [])
-                
-                for p in products:
+                for p in data.get('products', []):
                     for v in p.get('variants', []):
                         if v.get('available', True):
                             try:
                                 price = float(v.get('price', '0'))
                                 if price > 0:
                                     return {
-                                        'site': domain,
-                                        'price': f"{price:.2f}",
-                                        'variant_id': str(v['id']),
-                                        'link': f"{domain}/products/{p['handle']}"
+                                        'site': domain, 'price': f"{price:.2f}",
+                                        'variant_id': str(v['id']), 'link': f"{domain}/products/{p['handle']}"
                                     }
                             except:
                                 continue
@@ -129,9 +116,6 @@ async def fetch_products(domain, proxy_str=None):
     except Exception as e:
         return False, f"Fetch Error: {str(e)}"
 
-# ==========================================
-# SHOPIFY CHECKER CORE LOGIC
-# ==========================================
 async def process_card(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=None):
     gateway = "Shopify Checkout"
     total_price = "0.00"
@@ -152,22 +136,19 @@ async def process_card(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=N
             variant_id = info['variant_id']
 
         connector = aiohttp.TCPConnector(ssl=False)
-        timeout = aiohttp.ClientTimeout(total=25)
+        timeout = aiohttp.ClientTimeout(total=20)
         
         async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Origin': ourl,
-                'Referer': ourl
+                'Origin': ourl, 'Referer': ourl
             }
             
-            # 1. Add to Cart
             cart_resp = await session.post(f"{ourl}/cart/add.js", data=f'id={variant_id}&quantity=1', headers={**headers, 'Content-Type': 'application/x-www-form-urlencoded'}, proxy=proxy)
             if cart_resp.status != 200:
                 return False, "Cart Failed", gateway, total_price, currency
 
-            # 2. Get Checkout Page & Session Token
             checkout_resp = await session.post(f"{ourl}/checkout/", allow_redirects=True, headers=headers, proxy=proxy)
             checkout_url = str(checkout_resp.url)
             text = await checkout_resp.text()
@@ -179,7 +160,6 @@ async def process_card(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=N
             if not sst:
                 return False, "Session Token Failed", gateway, total_price, currency
 
-            # 3. PCI Vault Tokenization for Credit Card
             vault_payload = {
                 "credit_card": {
                     "number": cc, "month": int(mes), "year": int(ano),
@@ -195,7 +175,7 @@ async def process_card(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=N
             if not token:
                 return False, "Vault Token Failed", gateway, total_price, currency
 
-            return True, "ORDER_PLACED", gateway, "10.00", currency
+            return True, "ORDER_PLACED", gateway, "5.00", currency
 
     except Exception as e:
         return False, f"Site Error: {str(e)}", gateway, total_price, currency
@@ -219,7 +199,6 @@ def shopify_checker():
         cc_parts = parse_cc_string(cc_string)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
         try:
             success, message, gateway, price, currency = loop.run_until_complete(
                 process_card(cc_parts['cc'], cc_parts['mes'], cc_parts['ano'], cc_parts['cvv'], site)

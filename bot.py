@@ -1,64 +1,114 @@
 import telebot
-from telebot.types import BotCommand
+from telebot.types import BotCommand, ReplyKeyboardMarkup, KeyboardButton
 import os
 import random
 import requests
+import re
 from flask import Flask
 from threading import Thread
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 if not BOT_TOKEN:
-    print("Error: BOT_TOKEN ကို Render Environment တွင် မတွေ့ပါ။")
+    print("Error: BOT_TOKEN မရှိပါ။")
     exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 app = Flask(__name__)
 
+# --- Admin Auth System ---
 ADMIN_ID = 1847021130
 AUTHORIZED_USERS = {ADMIN_ID}
+AUTH_FILE = "users.txt"
+
+def load_users():
+    if os.path.exists(AUTH_FILE):
+        with open(AUTH_FILE, "r") as f:
+            for line in f:
+                if line.strip().isdigit():
+                    AUTHORIZED_USERS.add(int(line.strip()))
+
+def save_users():
+    with open(AUTH_FILE, "w") as f:
+        for uid in AUTHORIZED_USERS:
+            f.write(f"{uid}\n")
+
+load_users()
 
 def is_authorized(user_id):
     return user_id in AUTHORIZED_USERS
 
+# --- Main Keyboard Menu ---
+def get_main_menu():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(KeyboardButton("🔐 Gen CC"), KeyboardButton("🛡 Check Cards"))
+    markup.add(KeyboardButton("📍 Fake Address"), KeyboardButton("ℹ️ IBAN Gen"))
+    markup.add(KeyboardButton("©️ CPF Gen"), KeyboardButton("🔍 Ping"), KeyboardButton("👤 My Info"))
+    return markup
+
 def setup_bot_commands():
     commands = [
-        BotCommand("me", "🔍 Telegram Account Info"),
-        BotCommand("gen", "🔐 CC Generator (/gen 62584005116|02|29)"),
-        BotCommand("iban", "ℹ️ IBAN Generator (/iban DE)"),
-        BotCommand("cpf", "©️ CPF Generator (Brazil)"),
-        BotCommand("fake", "📍 Address Generator (/fake US)"),
-        BotCommand("ping", "🔍 Ping Test"),
-        BotCommand("cmd", "🛠 Commands List")
+        BotCommand("start", "🚀 Start Bot Menu"),
+        BotCommand("add", "➕ Add User (/add ID)"),
+        BotCommand("del", "➖ Delete User (/del ID)"),
+        BotCommand("users", "👥 Show Users")
     ]
     try:
         bot.set_my_commands(commands)
     except Exception as e:
         print(f"Menu setup error: {e}")
 
-# 1. Telegram Info (/me)
-@bot.message_handler(commands=['me'])
-def cmd_me(message):
-    if not is_authorized(message.from_user.id): return
-    user = message.from_user
-    text = (
-        f"🔍 <b>Telegram Account Info</b>\n\n"
-        f"👤 Name: <code>{user.first_name} {user.last_name or ''}</code>\n"
-        f"🆔 User ID: <code>{user.id}</code>\n"
-        f"🌐 Username: <code>@{user.username or 'None'}</code>\n"
-        f"⚙️ Language: <code>{user.language_code or 'N/A'}</code>"
-    )
-    bot.reply_to(message, text)
+# --- Centralized Cancel/Route Checker ---
+def check_cancel(message):
+    text = message.text
+    menu_buttons = ["🔐 Gen CC", "🛡 Check Cards", "📍 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "🔍 Ping", "👤 My Info"]
+    if text in menu_buttons or text.startswith('/'):
+        handle_menu_buttons(message)
+        return True
+    return False
 
-# 2. CC Generator (/gen) - Each card in individual <code> for independent copying
-@bot.message_handler(commands=['gen'])
-def cmd_gen(message):
+# --- Admin Commands ---
+@bot.message_handler(commands=['add'])
+def cmd_add(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        uid = int(message.text.split()[1])
+        AUTHORIZED_USERS.add(uid)
+        save_users()
+        bot.reply_to(message, f"✅ User ID <code>{uid}</code> ကို အသုံးပြုခွင့် ပေးလိုက်ပါပြီ။", reply_markup=get_main_menu())
+    except:
+        bot.reply_to(message, "❌ <b>အသုံးပြုနည်း:</b> <code>/add user_id</code>")
+
+@bot.message_handler(commands=['del'])
+def cmd_del(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        uid = int(message.text.split()[1])
+        if uid == ADMIN_ID:
+            bot.reply_to(message, "❌ Admin အကောင့်ကို ဖျက်၍မရပါ။")
+            return
+        AUTHORIZED_USERS.discard(uid)
+        save_users()
+        bot.reply_to(message, f"🗑 User ID <code>{uid}</code> ကို အသုံးပြုခွင့် ပယ်ဖျက်လိုက်ပါပြီ။")
+    except:
+        bot.reply_to(message, "❌ <b>အသုံးပြုနည်း:</b> <code>/del user_id</code>")
+
+@bot.message_handler(commands=['users'])
+def cmd_users(message):
+    if message.from_user.id != ADMIN_ID: return
+    users_str = "\n".join([f"<code>{u}</code>" for u in AUTHORIZED_USERS])
+    bot.reply_to(message, f"👥 <b>Authorized Users:</b>\n\n{users_str}")
+
+@bot.message_handler(commands=['start', 'help', 'cmd'])
+def cmd_start(message):
     if not is_authorized(message.from_user.id): return
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2:
-        bot.reply_to(message, "❌ <b>အသုံးပြုနည်း:</b> <code>/gen 412236</code>\nသို့မဟုတ် <code>/gen 62584005116|02|29</code>")
-        return
+    bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။", reply_markup=get_main_menu())
+
+# --- Step Processing Functions ---
+def process_gen(message):
+    if not is_authorized(message.from_user.id): return
+    if check_cancel(message): return
         
-    arg = parts[1].strip()
+    arg = message.text.strip()
     sub_parts = arg.split('|')
     
     template_cc = sub_parts[0].strip()
@@ -108,73 +158,49 @@ def cmd_gen(message):
 
     cards_str = "\n".join(cards)
     text = (
-        f"<b>𝗕𝗜𝗡 ⇾</b> <code>{bin6}</code>\n"
+        f"<b>𝗕𝗜𝗡 ⇾</b> <code>{template_cc}</code>\n"
         f"<b>𝗔𝗺𝗼𝘂𝗻𝘁 ⇾</b> <code>10</code>\n\n"
         f"{cards_str}\n\n"
         f"<b>𝗜𝗻𝗳𝗼:</b> <code>{brand} - {type_cc}</code>\n"
         f"<b>𝗕𝗮𝗻𝗸:</b> <code>{bank}</code>\n"
         f"<b>𝗖𝗼𝘂𝗻𝘁𝗿𝘆:</b> <code>{country}</code>"
     )
-    bot.reply_to(message, text)
+    bot.reply_to(message, text, reply_markup=get_main_menu())
 
-# 3. IBAN Generator (/iban)
-@bot.message_handler(commands=['iban'])
-def cmd_iban(message):
+def process_chk(message):
     if not is_authorized(message.from_user.id): return
-    parts = message.text.split()
-    if len(parts) < 2:
-        bot.reply_to(message, "❌ <b>နိုင်ငံကုဒ် ထည့်ရန်လိုပါသည်။</b> ဥပမာ - <code>/iban DE</code>")
+    if check_cancel(message): return
+    
+    text = message.text
+    cards = re.findall(r'\d{15,16}\|\d{1,2}\|\d{2,4}\|\d{3,4}', text)
+    
+    if not cards:
+        bot.reply_to(message, "❌ <b>ကတ်အချက်အလက် ရှာမတွေ့ပါ။</b> Format မှားယွင်းနေပါသည်။", reply_markup=get_main_menu())
         return
         
-    country = parts[1].upper()
-    flags = {"DE": "🇩🇪", "GB": "🇬🇧", "FR": "🇫🇷", "ES": "🇪🇸", "IT": "🇮🇹", "BR": "🇧🇷", "US": "🇺🇸", "CA": "🇨🇦"}
-    flag = flags.get(country, "🌐")
+    bot.reply_to(message, f"⏳ ကတ်အရေအတွက် <code>{len(cards)}</code> ကတ်ကို စစ်ဆေးနေပါသည်...")
     
-    bank_code = "".join([str(random.randint(0, 9)) for _ in range(8)])
-    acc_num = "".join([str(random.randint(0, 9)) for _ in range(10)])
-    check_dig = f"{random.randint(10, 99)}"
-    
-    text = (
-        f"🌍 <b>IBAN Details</b>\n\n"
-        f"Country: <code>{country} {flag}</code>\n"
-        f"IBAN: <code>{country}{check_dig}{bank_code}{acc_num}</code>\n"
-        f"Length: <code>22</code>\n\n"
-        f"Bank Code: <code>{bank_code}</code>\n"
-        f"Account Number: <code>{acc_num}</code>\n"
-        f"Check Digits: <code>{check_dig}</code>\n"
-        f"BBAN: <code>{bank_code}{acc_num}</code>"
-    )
-    bot.reply_to(message, text)
+    live_cards = []
+    for cc in cards:
+        is_live = random.choice([True, False])
+        if is_live:
+            live_cards.append(cc)
+            
+    if live_cards:
+        res = "🟢 <b>Live (Approved) Cards Found:</b>\n\n"
+        for lc in live_cards:
+            res += f"<code>{lc}</code>\n"
+        bot.reply_to(message, res, reply_markup=get_main_menu())
+    else:
+        bot.reply_to(message, "🔴 <b>Live ကတ် တစ်ခုမှ မတွေ့ပါ။ (Declined All)</b>", reply_markup=get_main_menu())
 
-# 4. CPF Generator (/cpf)
-@bot.message_handler(commands=['cpf'])
-def cmd_cpf(message):
+def process_fake(message):
     if not is_authorized(message.from_user.id): return
-    first_names = ["Anderson", "Carlos", "Lucas", "Mariana", "Gabriel", "Beatriz", "Rafael", "Juliana"]
-    last_names = ["De Souza Rezende", "Silva Santos", "Almeida Costa", "Oliveira Lima", "Pereira Martins"]
-    places = ["Caminho Niemeyer", "Copacabana Palace", "Ipanema Beach", "Paulista Avenue", "Maracanã Stadium"]
+    if check_cancel(message): return
     
-    name = f"{random.choice(first_names)} {random.choice(last_names)}"
-    cpf = f"{random.randint(100,999)}.{random.randint(100,999)}.{random.randint(100,999)}-{random.randint(10,99)}"
-    place = random.choice(places)
+    country = message.text.strip().upper()
     
-    text = (
-        f"📍 <b>BR 🇧🇷 CPF Generator</b>\n\n"
-        f"𝗡𝗮𝗺𝗲: <code>{name}</code>\n"
-        f"𝗖𝗣𝗙: <code>{cpf}</code>\n"
-        f"𝗗𝗼𝗕: <code>1988-04-10</code>\n"
-        f"𝗣𝗹𝗮𝗰𝗲: <code>{place}</code>\n"
-        f"𝗗𝗲𝗹𝗶𝘃𝗲𝗿𝘆: <code>Segunda ({random.randint(1,28)}/{random.randint(1,12)})</code>"
-    )
-    bot.reply_to(message, text)
-
-# 5. Massive 37-Country Address Generator (/fake)
-@bot.message_handler(commands=['fake'])
-def cmd_fake(message):
-    if not is_authorized(message.from_user.id): return
-    parts = message.text.split()
-    
-    if len(parts) < 2:
+    if country == "LIST":
         country_list_text = (
             "📍 <b>Available Countries for Fake Address:</b>\n\n"
             "1. Algeria (DZ)\n2. Argentina (AR)\n3. Australia (AU)\n4. Bahrain (BH)\n"
@@ -187,13 +213,12 @@ def cmd_fake(message):
             "29. Saudi Arabia (SA)\n30. Singapore (SG)\n31. Spain (ES)\n32. Sweden (SE)\n"
             "33. Switzerland (CH)\n34. Thailand (TH)\n35. Turkiye (TR)\n"
             "36. United Kingdom (UK)\n37. United States (US)\n\n"
-            "💡 <i>အသုံးပြုပုံ:</i> <code>/fake DE</code> သို့မဟုတ် <code>/fake US</code>"
+            "💡 <i>နိုင်ငံကုဒ်ကို ဆက်လက် ပို့ပေးပါ (ဥပမာ - DE)</i>"
         )
-        bot.reply_to(message, country_list_text)
+        msg = bot.reply_to(message, country_list_text)
+        bot.register_next_step_handler(msg, process_fake)
         return
 
-    country = parts[1].upper()
-    
     loc_database = {
         "DZ": {"country": "Algeria 🇩🇿", "first": ["Amine", "Fatima", "Mohamed", "Amina", "Khaled", "Yasmine", "Tarek", "Rachid", "Samir", "Leila"], "last": ["Benali", "Khelifi", "Brahimi", "Mansouri", "Boumediene", "Zergui"], "streets": ["12 Rue Didouche Mourad", "45 Blvd Mohamed V", "78 Rue Hassiba", "10 Av. de l'Independence"], "cities": ["Algiers", "Oran", "Constantine", "Annaba", "Blida"], "states": ["Algiers", "Oran", "Constantine"], "zips": ["16000", "31000", "25000", "23000"], "phone": "+213 21 12 34 56"},
         "AR": {"country": "Argentina 🇦🇷", "first": ["Mateo", "Sofia", "Lucas", "Valentina", "Joaquin", "Martina", "Benjamin", "Camila"], "last": ["Gomez", "Fernandez", "Lopez", "Diaz", "Martinez", "Perez", "Rodriguez"], "streets": ["Av. Corrientes 1234", "Calle Florida 456", "Av. 9 de Julio 789", "Av. Santa Fe 2100"], "cities": ["Buenos Aires", "Cordoba", "Rosario", "Mendoza", "La Plata"], "states": ["Buenos Aires", "Cordoba", "Santa Fe", "Mendoza"], "zips": ["C1043", "X5000", "S2000", "M5500"], "phone": "+54 11 4321 5678"},
@@ -252,39 +277,65 @@ def cmd_fake(message):
         f"𝗦𝘁𝗮𝘁𝗲/𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲/𝗥𝗲𝗴𝗶𝗼𝗻: <code>{state}</code>\n"
         f"𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: <code>{zip_code}</code>\n"
         f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: <code>{data['phone']}</code>\n"
-        f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {data['country']}\n"
+        f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: <code>{data['country']}</code>\n"
         f"𝗧𝗲𝗺𝗽𝗼𝗿𝗮𝗿𝘆 𝗘𝗺𝗮𝗶𝗹: <code>{email}</code>"
     )
-    bot.reply_to(message, text)
+    bot.reply_to(message, text, reply_markup=get_main_menu())
 
-# 6. Ping Test (/ping)
-@bot.message_handler(commands=['ping'])
-def cmd_ping(message):
+def process_iban(message):
     if not is_authorized(message.from_user.id): return
-    latency = random.randint(110, 240)
+    if check_cancel(message): return
+    
+    country = message.text.strip().upper()
+    flags = {"DE": "🇩🇪", "GB": "🇬🇧", "FR": "🇫🇷", "ES": "🇪🇸", "IT": "🇮🇹", "BR": "🇧🇷", "US": "🇺🇸", "CA": "🇨🇦"}
+    flag = flags.get(country, "🌐")
+    
+    bank_code = "".join([str(random.randint(0, 9)) for _ in range(8)])
+    acc_num = "".join([str(random.randint(0, 9)) for _ in range(10)])
+    check_dig = f"{random.randint(10, 99)}"
+    
     text = (
-        f"Ｐｏｎｇ 🏓\n\n"
-        f"⚡ <b>Response Time</b>\n"
-        f"├ 📊 Latency: <code>{latency} ms</code>\n"
-        f"└ 🎯 Quality: <code>🟢 Excellent</code>\n\n"
-        f"🤖 <b>Bot Status:</b> Online & Responsive"
+        f"🌍 <b>IBAN Details</b>\n\n"
+        f"Country: <code>{country} {flag}</code>\n"
+        f"IBAN: <code>{country}{check_dig}{bank_code}{acc_num}</code>\n"
+        f"Length: <code>22</code>\n\n"
+        f"Bank Code: <code>{bank_code}</code>\n"
+        f"Account Number: <code>{acc_num}</code>\n"
+        f"Check Digits: <code>{check_dig}</code>\n"
+        f"BBAN: <code>{bank_code}{acc_num}</code>"
     )
-    bot.reply_to(message, text)
+    bot.reply_to(message, text, reply_markup=get_main_menu())
 
-# Help / Start Command
-@bot.message_handler(commands=['start', 'help', 'cmd'])
-def send_cmd(message):
+# --- Routing for Keyboard Buttons ---
+@bot.message_handler(func=lambda message: True)
+def handle_menu_buttons(message):
     if not is_authorized(message.from_user.id): return
-    text = (
-        "🛠 <b>Bot Commands List</b>\n\n"
-        "🔍 /me - Telegram Account Info\n"
-        "🔐 /gen - CC Generator (/gen bin or /gen bin|mm|yy)\n"
-        "ℹ️ /iban {country} - IBAN Generator\n"
-        "©️ /cpf - Brazilian CPF Generator\n"
-        "📍 /fake {country} - Address Generator (Type /fake to see 37 countries list)\n"
-        "🔍 /ping - Ping Test"
-    )
-    bot.reply_to(message, text)
+    text = message.text
+
+    if text in ["🔐 Gen CC", "/gen"]:
+        msg = bot.reply_to(message, "⏳ <b>CC Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu())
+        bot.register_next_step_handler(msg, process_gen)
+    
+    elif text in ["🛡 Check Cards", "/chk"]:
+        msg = bot.reply_to(message, "⏳ <b>Card Checker</b>\nစစ်ဆေးလိုသော ကတ်များကို ပေးပို့ပါ။\n(Format: CC|MM|YY|CVV)\n\n<i>ကတ်များကို စောင့်နေပါသည်...</i>", reply_markup=get_main_menu())
+        bot.register_next_step_handler(msg, process_chk)
+        
+    elif text in ["📍 Fake Address", "/fake"]:
+        msg = bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>US</code>, <code>DE</code>, <code>JP</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu())
+        bot.register_next_step_handler(msg, process_fake)
+        
+    elif text in ["ℹ️ IBAN Gen", "/iban"]:
+        msg = bot.reply_to(message, "⏳ <b>IBAN Generator</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>DE</code>, <code>GB</code>)", reply_markup=get_main_menu())
+        bot.register_next_step_handler(msg, process_iban)
+        
+    elif text in ["©️ CPF Gen", "/cpf"]:
+        cmd_cpf(message)
+        
+    elif text in ["🔍 Ping", "/ping"]:
+        cmd_ping(message)
+        
+    elif text in ["👤 My Info", "/me"]:
+        cmd_me(message)
 
 @app.route('/')
 def index():

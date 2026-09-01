@@ -59,7 +59,7 @@ def is_banned(user_id):
 # --- Main Keyboard Menu ---
 def get_main_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(KeyboardButton("🔐 Gen CC"), KeyboardButton("📍 Fake Address"))
+    markup.add(KeyboardButton("🔐 Gen BIN"), KeyboardButton("📍 Fake Address"))
     markup.add(KeyboardButton("ℹ️ IBAN Gen"), KeyboardButton("©️ CPF Gen"))
     markup.add(KeyboardButton("👤 My Info"))
     return markup
@@ -75,7 +75,7 @@ def setup_bot_commands():
 
 def check_cancel(message):
     text = message.text
-    menu_buttons = ["🔐 Gen CC", "📍 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info"]
+    menu_buttons = ["🔐 Gen BIN", "📍 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info"]
     if text in menu_buttons or text.startswith('/'):
         handle_menu_buttons(message)
         return True
@@ -126,7 +126,6 @@ def cmd_users_list(message):
     users_list = list(ALL_USERS)
     total = len(users_list)
     
-    # နေရာမလောက်မည်စိုးသဖြင့် နောက်ဆုံး User အယောက် ၁၀၀ ကိုသာ ပြပေးမည်
     display_users = users_list[-100:]
     users_str = "\n".join([f"<code>{u}</code>" for u in display_users])
     
@@ -144,7 +143,7 @@ def cmd_admin_menu(message):
         "🚫 /ban user_id - Ban User\n"
         "✅ /unban user_id - Unban User\n"
         "🛑 /banned - Show Banned Users\n\n"
-        "🔐 /gen - CC Generator\n"
+        "🔐 /gen - BIN Generator\n"
         "📍 /fake - Address Generator\n"
         "ℹ️ /iban - IBAN Generator\n"
         "©️ /cpf - CPF Generator\n"
@@ -154,7 +153,7 @@ def cmd_admin_menu(message):
 
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
-    add_user(message.from_user.id) # User အသစ်များကို မှတ်သားမည်
+    add_user(message.from_user.id) 
     if is_banned(message.from_user.id): return
     bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Genနှင့်Addressသည် Fommatမှန်က တန်းပို့နိုင်သည်။ (ဥပမာ-524554555|xx|xx|xxxနှင့် us/uk/de/etc....)", reply_markup=get_main_menu())
 
@@ -308,7 +307,7 @@ def generate_fake_address(message, country_code):
         "IN": {"country": "India 🇮🇳", "first": ["Aarav", "Diya", "Vivaan"], "last": ["Sharma", "Patel", "Gupta"], "streets": ["MG Road", "Connaught Place"], "cities": ["Mumbai", "Delhi"], "states": ["Maharashtra", "Delhi"], "zips": ["400001", "110001"], "phone": f"+91 9{random.randint(100000000,999999999)}"},
         "IT": {"country": "Italy 🇮🇹", "first": ["Leonardo", "Giulia", "Francesco"], "last": ["Rossi", "Russo", "Ferrari"], "streets": ["Via Roma", "Corso Vittorio Emanuele"], "cities": ["Rome", "Milan"], "states": ["Lazio", "Lombardy"], "zips": ["00100", "20100"], "phone": f"+39 3{random.randint(10,99)} {random.randint(1000000,9999999)}"},
         "JP": {"country": "Japan 🇯🇵", "first": ["Haruto", "Yui", "Sota"], "last": ["Sato", "Suzuki", "Takahashi"], "streets": ["Nagata-cho", "Oshiage"], "cities": ["Tokyo", "Osaka"], "states": ["Tokyo", "Osaka"], "zips": ["100-0001", "530-0001"], "phone": f"+81 90-{random.randint(1000,9999)}-{random.randint(1000,9999)}"},
-        "KZ": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias"], "last": ["Nurlan", "Omarov", "Kasenov"], "streets": ["Dostyk Ave", "Konaev St"], "cities": ["Astana", "Almaty"], "states": ["Astana", "Almaty"], "zips": ["010000", "050000"], "phone": f"+7 7{random.choice(['01','02','05','07','75','77'])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
+        "KZ": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias"], "last": ["Nurlan", "Omarov", "Kasenov"], "streets": ["Dostyk Ave", "Konaev St"], "cities": ["Astana", "Almaty"], "states": ["Astana City", "Almaty City"], "zips": ["010000", "050000"], "phone": f"+7 7{random.choice(['01','02','05','07','75','77'])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
         "MY": {"country": "Malaysia 🇲🇾", "first": ["Ahmad", "Siti", "Wei"], "last": ["Tan", "Lee", "Wong"], "streets": ["Jalan Ampang", "Jalan Bukit Bintang"], "cities": ["Kuala Lumpur", "George Town"], "states": ["Wilayah Persekutuan", "Penang"], "zips": ["50450", "10200"], "phone": f"+60 1{random.randint(1,9)}-{random.randint(1000,9999)} {random.randint(1000,9999)}"},
         "MX": {"country": "Mexico 🇲🇽", "first": ["Mateo", "Sofia", "Santiago"], "last": ["Garcia", "Martinez", "Lopez"], "streets": ["Paseo de la Reforma", "Av. Insurgentes"], "cities": ["Mexico City", "Guadalajara"], "states": ["CDMX", "Jalisco"], "zips": ["06600", "44100"], "phone": f"+52 55 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
         "MA": {"country": "Morocco 🇲🇦", "first": ["Youssef", "Kenza", "Mehdi"], "last": ["Alami", "Bennani", "Tazi"], "streets": ["Mohammed V Blvd", "Allal Ben Abdellah"], "cities": ["Casablanca", "Rabat"], "states": ["Casablanca-Settat", "Rabat-Salé-Kénitra"], "zips": ["20000", "10000"], "phone": f"+212 6{random.randint(10,99)} {random.randint(10000,99999)}"},
@@ -330,9 +329,7 @@ def generate_fake_address(message, country_code):
         "ID": {"country": "Indonesia 🇮🇩", "first": ["Budi", "Siti", "Agus", "Ayu"], "last": ["Setiawan", "Lestari", "Santoso", "Saputra"], "streets": ["Jl. Sudirman", "Jl. Thamrin", "Jl. Gatot Subroto"], "cities": ["Jakarta", "Surabaya", "Bandung", "Medan"], "states": ["DKI Jakarta", "Jawa Timur", "Jawa Barat"], "zips": ["10110", "60271", "40111"], "phone": f"+62 8{random.choice([1,2,5,9])} {random.randint(1000,9999)} {random.randint(1000,9999)}"}
     }
     
-    fallback_us = {"country": "United States 🇺🇸", "first": ["John", "Michael", "Emma", "Olivia"], "last": ["Smith", "Johnson", "Williams", "Brown"], "streets": ["123 Main St", "456 Oak Ave"], "cities": ["New York", "Los Angeles"], "states": ["NY", "CA"], "zips": ["10001", "90001"], "phone": f"+1 ({random.randint(200,999)}) {random.randint(200,999)}-{random.randint(1000,9999)}"}
-    
-    data = loc_database.get(country_code, fallback_us)
+    data = loc_database.get(country_code, loc_database["US"])
     
     fname = random.choice(data["first"])
     lname = random.choice(data["last"])
@@ -400,12 +397,12 @@ def process_iban_prompt(message):
 # --- Routing for Text, Auto-Detect & Buttons ---
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
-    add_user(message.from_user.id) # User ဝင်လာတိုင်း မှတ်ထားမည်
+    add_user(message.from_user.id) 
     if is_banned(message.from_user.id): return
     text = message.text.strip()
 
-    if text in ["🔐 Gen CC", "/gen"]:
-        bot.reply_to(message, "⏳ <b>CC Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu())
+    if text in ["🔐 Gen BIN", "/gen"]:
+        bot.reply_to(message, "⏳ <b>BIN Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu())
         return
     elif text in ["📍 Fake Address", "/fake"]:
         bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>US</code>, <code>DE</code>, <code>JP</code>, <code>ID</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu())

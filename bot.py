@@ -212,7 +212,6 @@ def generate_cc(message, input_text):
     bot.reply_to(message, text, reply_markup=get_main_menu())
 
 def generate_fake_address(message, country_code):
-    # Supported countries by RandomUser API for perfect realistic data
     api_supported_nats = ['AU', 'BR', 'CA', 'CH', 'DE', 'DK', 'ES', 'FI', 'FR', 'GB', 'IE', 'IN', 'IR', 'MX', 'NL', 'NO', 'NZ', 'RS', 'TR', 'UA', 'US']
     
     if country_code in api_supported_nats:
@@ -244,9 +243,8 @@ def generate_fake_address(message, country_code):
                 bot.reply_to(message, text, reply_markup=get_main_menu())
                 return
         except:
-            pass # Fallback to local DB if API fails
+            pass 
 
-    # Dynamic Local Database with Realistic Formatted Random Phones
     loc_database = {
         "DZ": {"country": "Algeria 🇩🇿", "first": ["Amine", "Fatima", "Mohamed", "Amina", "Khaled"], "last": ["Benali", "Khelifi", "Brahimi", "Mansouri"], "streets": ["12 Rue Didouche Mourad", "45 Blvd Mohamed V"], "cities": ["Algiers", "Oran", "Constantine"], "states": ["Algiers", "Oran"], "zips": ["16000", "31000", "25000"], "phone": f"+213 55{random.randint(100000, 999999):06d}"},
         "AR": {"country": "Argentina 🇦🇷", "first": ["Mateo", "Sofia", "Lucas", "Valentina"], "last": ["Gomez", "Fernandez", "Lopez", "Diaz"], "streets": ["Av. Corrientes 1234", "Calle Florida 456"], "cities": ["Buenos Aires", "Cordoba", "Rosario"], "states": ["Buenos Aires", "Cordoba"], "zips": ["C1043", "X5000"], "phone": f"+54 9 11 {random.randint(1000,9999)}-{random.randint(1000,9999)}"},
@@ -255,7 +253,7 @@ def generate_fake_address(message, country_code):
         "KH": {"country": "Cambodia 🇰🇭", "first": ["Sokha", "Vanna", "Dara", "Chan"], "last": ["Chan", "Seng", "Chea"], "streets": ["Preah Monivong Blvd", "Sihanouk Blvd"], "cities": ["Phnom Penh", "Siem Reap"], "states": ["Phnom Penh", "Siem Reap"], "zips": ["12000", "17000"], "phone": f"+855 {random.choice([10,12,69,93])} {random.randint(100, 999)} {random.randint(100, 999)}"},
         "CO": {"country": "Colombia 🇨🇴", "first": ["Santiago", "Valeria", "Mateo"], "last": ["Rodriguez", "Lopez", "Garcia"], "streets": ["Cra. 7 #32-16", "Calle 50 #70-20"], "cities": ["Bogota", "Medellin"], "states": ["Cundinamarca", "Antioquia"], "zips": ["110311", "050001"], "phone": f"+57 3{random.randint(10,29)} {random.randint(1000000, 9999999)}"},
         "EG": {"country": "Egypt 🇪🇬", "first": ["Ahmed", "Nour", "Mohamed", "Salma"], "last": ["Mohamed", "Ibrahim", "Hassan"], "streets": ["15 Tahrir Square", "Corniche El Nil"], "cities": ["Cairo", "Alexandria"], "states": ["Cairo", "Alexandria"], "zips": ["11511", "21500"], "phone": f"+20 10 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "KZ": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias"], "last": ["Nurlan", "Omarov", "Kasenov"], "streets": ["Dostyk Ave 18", "Konaev St 25"], "cities": ["Astana", "Almaty"], "states": ["Astana City", "Almaty City"], "zips": ["010000", "050000"], "phone": f"+7 7{random.choice([01,02,05,07,75,77])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
+        "KZ": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias"], "last": ["Nurlan", "Omarov", "Kasenov"], "streets": ["Dostyk Ave 18", "Konaev St 25"], "cities": ["Astana", "Almaty"], "states": ["Astana City", "Almaty City"], "zips": ["010000", "050000"], "phone": f"+7 7{random.choice(['01','02','05','07','75','77'])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
         "MY": {"country": "Malaysia 🇲🇾", "first": ["Ahmad", "Siti", "Wei", "Ling"], "last": ["Tan", "Lee", "Wong"], "streets": ["Jalan Ampang 50", "Jalan Bukit Bintang 12"], "cities": ["Kuala Lumpur", "George Town"], "states": ["Wilayah Persekutuan", "Penang"], "zips": ["50450", "10200"], "phone": f"+60 1{random.randint(1,9)}-{random.randint(1000,9999)} {random.randint(1000,9999)}"},
         "MA": {"country": "Morocco 🇲🇦", "first": ["Youssef", "Kenza", "Mehdi"], "last": ["Alami", "Bennani", "Tazi"], "streets": ["Mohammed V Blvd 12", "Allal Ben Abdellah 30"], "cities": ["Casablanca", "Rabat"], "states": ["Casablanca-Settat", "Rabat-Salé-Kénitra"], "zips": ["20000", "10000"], "phone": f"+212 6{random.randint(10,99)} {random.randint(10000,99999)}"},
         "PA": {"country": "Panama 🇵🇦", "first": ["Carlos", "Maria", "Jose"], "last": ["Perez", "Gonzalez", "Rodriguez"], "streets": ["Via España 120", "Calle 50 45"], "cities": ["Panama City", "San Miguelito"], "states": ["Panama", "San Miguelito"], "zips": ["0801", "0803"], "phone": f"+507 6{random.randint(100,999)}-{random.randint(1000,9999)}"},
@@ -266,7 +264,6 @@ def generate_fake_address(message, country_code):
         "SG": {"country": "Singapore 🇸🇬", "first": ["Wei", "Li", "Jie"], "last": ["Tan", "Lim", "Lee"], "streets": ["Orchard Road 100", "Marina Bay Link 8"], "cities": ["Singapore", "Jurong"], "states": ["Central", "West"], "zips": ["238888", "600101"], "phone": f"+65 {random.choice([8,9])}{random.randint(1000000,9999999)}"}
     }
     
-    # Fallback to general US if completely unknown
     fallback_us = {"country": "United States 🇺🇸", "first": ["John", "Michael", "Emma", "Olivia"], "last": ["Smith", "Johnson", "Williams", "Brown"], "streets": ["123 Main St", "456 Oak Ave"], "cities": ["New York", "Los Angeles"], "states": ["NY", "CA"], "zips": ["10001", "90001"], "phone": f"+1 ({random.randint(200,999)}) {random.randint(200,999)}-{random.randint(1000,9999)}"}
     
     data = loc_database.get(country, fallback_us)
@@ -339,7 +336,6 @@ def handle_all_messages(message):
     if is_banned(message.from_user.id): return
     text = message.text.strip()
 
-    # 1. Explicit Menu Buttons & Commands
     if text in ["🔐 Gen CC", "/gen"]:
         bot.reply_to(message, "⏳ <b>CC Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu())
         return
@@ -360,13 +356,11 @@ def handle_all_messages(message):
         show_country_list(message)
         return
 
-    # 2. Auto-Detect Fake Address (Country Codes)
     all_country_codes = ["DZ","AR","AU","BH","BD","BE","BR","KH","CA","CO","DK","EG","FI","FR","DE","IN","IT","JP","KZ","MY","MX","MA","NZ","PA","PK","PE","PL","QA","SA","SG","ES","SE","CH","TH","TR","UK","US", "GB", "IE", "NL", "NO", "RS", "UA"]
     if text.upper() in all_country_codes:
         generate_fake_address(message, text.upper())
         return
 
-    # 3. Auto-Detect CC Generation (If text starts with 6 or more digits)
     if re.match(r'^\d{6}', text):
         generate_cc(message, text)
         return

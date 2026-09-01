@@ -59,7 +59,7 @@ def is_banned(user_id):
 # --- Main Keyboard Menu ---
 def get_main_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(KeyboardButton("🔐 Gen BIN"), KeyboardButton("📍 Fake Address"))
+    markup.add(KeyboardButton("🔐 Gen BIN"), KeyboardButton("👉 Fake Address"))
     markup.add(KeyboardButton("ℹ️ IBAN Gen"), KeyboardButton("©️ CPF Gen"))
     markup.add(KeyboardButton("👤 My Info"))
     return markup
@@ -75,7 +75,7 @@ def setup_bot_commands():
 
 def check_cancel(message):
     text = message.text
-    menu_buttons = ["🔐 Gen BIN", "📍 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info"]
+    menu_buttons = ["🔐 Gen BIN", "👉 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info"]
     if text in menu_buttons or text.startswith('/'):
         handle_menu_buttons(message)
         return True
@@ -144,7 +144,7 @@ def cmd_admin_menu(message):
         "✅ /unban user_id - Unban User\n"
         "🛑 /banned - Show Banned Users\n\n"
         "🔐 /gen - BIN Generator\n"
-        "📍 /fake - Address Generator\n"
+        "👉 /fake - Address Generator\n"
         "ℹ️ /iban - IBAN Generator\n"
         "©️ /cpf - CPF Generator\n"
         "👤 /me - My Info"
@@ -179,7 +179,7 @@ def cmd_cpf(message):
     place = random.choice(places)
     
     text = (
-        f"📍 <b>BR 🇧🇷 CPF Generator</b>\n\n"
+        f"👉 <b>BR 🇧🇷 CPF Generator</b>\n\n"
         f"𝗡𝗮𝗺𝗲: <code>{name}</code>\n"
         f"𝗖𝗣𝗙: <code>{cpf}</code>\n"
         f"𝗗𝗼𝗕: <code>{random.randint(1970, 2005)}-{random.randint(1,12):02d}-{random.randint(1,28):02d}</code>\n"
@@ -250,12 +250,13 @@ def generate_cc(message, input_text):
     bot.reply_to(message, text, reply_markup=get_main_menu())
 
 def generate_fake_address(message, country_code):
-    if country_code == "GB":
-        country_code = "UK"
+    country_code = country_code.lower()
+    if country_code == "gb":
+        country_code = "uk"
 
-    api_mapping = {"UK": "GB"}
+    api_mapping = {"uk": "gb"}
     api_cc = api_mapping.get(country_code, country_code)
-    api_supported_nats = ['AU', 'BR', 'CA', 'CH', 'DE', 'DK', 'ES', 'FI', 'FR', 'GB', 'IE', 'IN', 'IR', 'MX', 'NL', 'NO', 'NZ', 'RS', 'TR', 'UA', 'US']
+    api_supported_nats = ['au', 'br', 'ca', 'ch', 'de', 'dk', 'es', 'fi', 'fr', 'gb', 'ie', 'in', 'ir', 'mx', 'nl', 'no', 'nz', 'rs', 'tr', 'ua', 'us']
     
     if api_cc in api_supported_nats:
         try:
@@ -269,19 +270,17 @@ def generate_fake_address(message, country_code):
                 state = data['location']['state']
                 zip_code = str(data['location']['postcode'])
                 phone = data['phone']
-                email = f"{fname.lower()}.{lname.lower()}{random.randint(10,999)}@gmail.com"
                 c_name = data['location']['country']
                 
                 text = (
-                    f"📍 <b>{c_name} Address Generator</b>\n\n"
+                    f"👉 <b>{c_name} Address Generator</b>\n\n"
                     f"𝗙𝘂𝗹𝗹 𝗡𝗮𝗺𝗲: <code>{fname} {lname}</code>\n"
                     f"𝗦𝘁𝗿𝗲𝗲𝘁 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: <code>{street}</code>\n"
-                    f"𝗖𝗶𝘁𝘆/𝗧𝗼𝘄𝗻/𝗩𝗶𝗹𝗹𝗮𝗴𝗲: <code>{city}</code>\n"
+                    f"𝗖𝗶𝘁𝘆/𝗧𝗼wn/𝗩𝗶𝗹𝗹𝗮𝗴𝗲: <code>{city}</code>\n"
                     f"𝗦𝘁𝗮𝘁𝗲/𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲/𝗥𝗲𝗴𝗶𝗼𝗻: <code>{state}</code>\n"
                     f"𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: <code>{zip_code}</code>\n"
                     f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: <code>{phone}</code>\n"
-                    f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: <code>{c_name}</code>\n"
-                    f"𝗧𝗲𝗺𝗽𝗼𝗿𝗮𝗿𝘆 𝗘𝗺𝗮𝗶𝗹: <code>{email}</code>"
+                    f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: <code>{c_name}</code>"
                 )
                 bot.reply_to(message, text, reply_markup=get_main_menu())
                 return
@@ -289,47 +288,47 @@ def generate_fake_address(message, country_code):
             pass 
 
     loc_database = {
-        "DZ": {"country": "Algeria 🇩🇿", "first": ["Amine", "Fatima", "Mohamed", "Amina"], "last": ["Benali", "Khelifi", "Brahimi", "Mansouri"], "streets": ["Rue Didouche Mourad", "Blvd Mohamed V"], "cities": ["Algiers", "Oran", "Constantine"], "states": ["Algiers", "Oran"], "zips": ["16000", "31000", "25000"], "phone": f"+213 55{random.randint(100000, 999999):06d}"},
-        "AR": {"country": "Argentina 🇦🇷", "first": ["Mateo", "Sofia", "Lucas", "Valentina"], "last": ["Gomez", "Fernandez", "Lopez", "Diaz"], "streets": ["Av. Corrientes", "Calle Florida"], "cities": ["Buenos Aires", "Cordoba"], "states": ["Buenos Aires", "Cordoba"], "zips": ["C1043", "X5000"], "phone": f"+54 9 11 {random.randint(1000,9999)}-{random.randint(1000,9999)}"},
-        "AU": {"country": "Australia 🇦🇺", "first": ["Jack", "Charlotte", "Oliver"], "last": ["Smith", "Wilson", "Johnson"], "streets": ["Collins St", "George St"], "cities": ["Sydney", "Melbourne"], "states": ["NSW", "Victoria"], "zips": ["2000", "3000"], "phone": f"+61 4{random.randint(10,99)} {random.randint(100,999)} {random.randint(100,999)}"},
-        "BH": {"country": "Bahrain 🇧🇭", "first": ["Ali", "Zainab", "Mohammed", "Fatima"], "last": ["Hassan", "Ahmed", "Al-Khalifa"], "streets": ["Road No 2803", "King Faisal Hwy"], "cities": ["Manama", "Riffa"], "states": ["Capital", "Southern"], "zips": ["328", "901"], "phone": f"+973 {random.choice([33,34,36,39])}{random.randint(100000, 999999):06d}"},
-        "BD": {"country": "Bangladesh 🇧🇩", "first": ["Rahim", "Ayesha", "Tanvir", "Nusrat"], "last": ["Uddin", "Begum", "Ahmed"], "streets": ["Motijheel C/A", "Gulshan Ave"], "cities": ["Dhaka", "Chittagong"], "states": ["Dhaka", "Chittagong"], "zips": ["1000", "4000"], "phone": f"+880 17{random.randint(10000000, 99999999)}"},
-        "BE": {"country": "Belgium 🇧🇪", "first": ["Lucas", "Camille", "Arthur"], "last": ["Janssen", "Dubois", "Peeters"], "streets": ["Rue de la Loi", "Meir"], "cities": ["Brussels", "Antwerp"], "states": ["Brussels", "Flanders"], "zips": ["1000", "2000"], "phone": f"+32 4{random.randint(70,99)} {random.randint(100000,999999)}"},
-        "BR": {"country": "Brazil 🇧🇷", "first": ["Anderson", "Mariana", "Gabriel"], "last": ["Silva", "Santos", "Oliveira"], "streets": ["Av. Paulista", "Copacabana"], "cities": ["São Paulo", "Rio de Janeiro"], "states": ["SP", "RJ"], "zips": ["01310-100", "22041-001"], "phone": f"+55 11 9{random.randint(1000,9999)}-{random.randint(1000,9999)}"},
-        "KH": {"country": "Cambodia 🇰🇭", "first": ["Sokha", "Vanna", "Dara", "Chan"], "last": ["Chan", "Seng", "Chea"], "streets": ["Preah Monivong Blvd", "Sihanouk Blvd"], "cities": ["Phnom Penh", "Siem Reap"], "states": ["Phnom Penh", "Siem Reap"], "zips": ["12000", "17000"], "phone": f"+855 {random.choice([10,12,69,93])} {random.randint(100, 999)} {random.randint(100, 999)}"},
-        "CA": {"country": "Canada 🇨🇦", "first": ["Liam", "Olivia", "Noah"], "last": ["Tremblay", "Roy", "Gagnon"], "streets": ["Yonge St", "Queen St W"], "cities": ["Toronto", "Vancouver"], "states": ["Ontario", "British Columbia"], "zips": ["M4W 2G8", "V6B 1B6"], "phone": f"+1 416-{random.randint(200,999)}-{random.randint(1000,9999)}"},
-        "CO": {"country": "Colombia 🇨🇴", "first": ["Santiago", "Valeria", "Mateo"], "last": ["Rodriguez", "Lopez", "Garcia"], "streets": ["Cra. 7", "Calle 50"], "cities": ["Bogota", "Medellin"], "states": ["Cundinamarca", "Antioquia"], "zips": ["110311", "050001"], "phone": f"+57 3{random.randint(10,29)} {random.randint(1000000, 9999999)}"},
-        "DK": {"country": "Denmark 🇩🇰", "first": ["Magnus", "Ida", "Oliver"], "last": ["Nielsen", "Jensen", "Hansen"], "streets": ["Strøget", "Vesterbrogade"], "cities": ["Copenhagen", "Aarhus"], "states": ["Capital Region", "Central Denmark"], "zips": ["1160", "8000"], "phone": f"+45 {random.randint(20,99)} {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "EG": {"country": "Egypt 🇪🇬", "first": ["Ahmed", "Nour", "Mohamed", "Salma"], "last": ["Mohamed", "Ibrahim", "Hassan"], "streets": ["Tahrir Square", "Corniche El Nil"], "cities": ["Cairo", "Alexandria"], "states": ["Cairo", "Alexandria"], "zips": ["11511", "21500"], "phone": f"+20 10 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "FI": {"country": "Finland 🇫🇮", "first": ["Eetu", "Aino", "Leo"], "last": ["Korhonen", "Virtanen", "Mäkinen"], "streets": ["Mannerheimintie", "Aleksanterinkatu"], "cities": ["Helsinki", "Espoo"], "states": ["Uusimaa", "Pirkanmaa"], "zips": ["00100", "02100"], "phone": f"+358 40 {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "FR": {"country": "France 🇫🇷", "first": ["Gabriel", "Jade", "Louis"], "last": ["Bernard", "Petit", "Robert"], "streets": ["Rue de la Paix", "Champs-Élysées"], "cities": ["Paris", "Lyon"], "states": ["Île-de-France", "Auvergne-Rhône-Alpes"], "zips": ["75001", "69001"], "phone": f"+33 6 {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "DE": {"country": "Germany 🇩🇪", "first": ["Maximilian", "Anna", "Alexander"], "last": ["Schmidt", "Weber", "Fischer"], "streets": ["Hauptstraße", "Friedrichstraße"], "cities": ["Berlin", "Munich"], "states": ["Berlin", "Bavaria"], "zips": ["10115", "80331"], "phone": f"+49 151 {random.randint(1000000,9999999)}"},
-        "IN": {"country": "India 🇮🇳", "first": ["Aarav", "Diya", "Vivaan"], "last": ["Sharma", "Patel", "Gupta"], "streets": ["MG Road", "Connaught Place"], "cities": ["Mumbai", "Delhi"], "states": ["Maharashtra", "Delhi"], "zips": ["400001", "110001"], "phone": f"+91 9{random.randint(100000000,999999999)}"},
-        "IT": {"country": "Italy 🇮🇹", "first": ["Leonardo", "Giulia", "Francesco"], "last": ["Rossi", "Russo", "Ferrari"], "streets": ["Via Roma", "Corso Vittorio Emanuele"], "cities": ["Rome", "Milan"], "states": ["Lazio", "Lombardy"], "zips": ["00100", "20100"], "phone": f"+39 3{random.randint(10,99)} {random.randint(1000000,9999999)}"},
-        "JP": {"country": "Japan 🇯🇵", "first": ["Haruto", "Yui", "Sota"], "last": ["Sato", "Suzuki", "Takahashi"], "streets": ["Nagata-cho", "Oshiage"], "cities": ["Tokyo", "Osaka"], "states": ["Tokyo", "Osaka"], "zips": ["100-0001", "530-0001"], "phone": f"+81 90-{random.randint(1000,9999)}-{random.randint(1000,9999)}"},
-        "KZ": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias"], "last": ["Nurlan", "Omarov", "Kasenov"], "streets": ["Dostyk Ave", "Konaev St"], "cities": ["Astana", "Almaty"], "states": ["Astana City", "Almaty City"], "zips": ["010000", "050000"], "phone": f"+7 7{random.choice(['01','02','05','07','75','77'])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "MY": {"country": "Malaysia 🇲🇾", "first": ["Ahmad", "Siti", "Wei"], "last": ["Tan", "Lee", "Wong"], "streets": ["Jalan Ampang", "Jalan Bukit Bintang"], "cities": ["Kuala Lumpur", "George Town"], "states": ["Wilayah Persekutuan", "Penang"], "zips": ["50450", "10200"], "phone": f"+60 1{random.randint(1,9)}-{random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "MX": {"country": "Mexico 🇲🇽", "first": ["Mateo", "Sofia", "Santiago"], "last": ["Garcia", "Martinez", "Lopez"], "streets": ["Paseo de la Reforma", "Av. Insurgentes"], "cities": ["Mexico City", "Guadalajara"], "states": ["CDMX", "Jalisco"], "zips": ["06600", "44100"], "phone": f"+52 55 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "MA": {"country": "Morocco 🇲🇦", "first": ["Youssef", "Kenza", "Mehdi"], "last": ["Alami", "Bennani", "Tazi"], "streets": ["Mohammed V Blvd", "Allal Ben Abdellah"], "cities": ["Casablanca", "Rabat"], "states": ["Casablanca-Settat", "Rabat-Salé-Kénitra"], "zips": ["20000", "10000"], "phone": f"+212 6{random.randint(10,99)} {random.randint(10000,99999)}"},
-        "NZ": {"country": "New Zealand 🇳🇿", "first": ["Oliver", "Isla", "Jack"], "last": ["Clark", "Wright", "Smith"], "streets": ["Queen Street", "Lambton Quay"], "cities": ["Auckland", "Wellington"], "states": ["Auckland", "Wellington"], "zips": ["1010", "6011"], "phone": f"+64 21 {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "PA": {"country": "Panama 🇵🇦", "first": ["Carlos", "Maria", "Jose"], "last": ["Perez", "Gonzalez", "Rodriguez"], "streets": ["Via España", "Calle 50"], "cities": ["Panama City", "San Miguelito"], "states": ["Panama", "San Miguelito"], "zips": ["0801", "0803"], "phone": f"+507 6{random.randint(100,999)}-{random.randint(1000,9999)}"},
-        "PK": {"country": "Pakistan 🇵🇰", "first": ["Hamza", "Ayesha", "Muhammad"], "last": ["Khan", "Malik", "Ahmed"], "streets": ["Jinnah Avenue", "Mall Road"], "cities": ["Islamabad", "Karachi"], "states": ["ICT", "Sindh"], "zips": ["44000", "74000"], "phone": f"+92 3{random.choice(['00','33','45'])}-{random.randint(1000000,9999999)}"},
-        "PE": {"country": "Peru 🇵🇪", "first": ["Diego", "Lucia", "Mateo"], "last": ["Flores", "Ramos", "Garcia"], "streets": ["Av. Larco", "Av. Javier Prado"], "cities": ["Lima", "Arequipa"], "states": ["Lima", "Arequipa"], "zips": ["15074", "04001"], "phone": f"+51 9{random.randint(10000000,99999999)}"},
-        "PL": {"country": "Poland 🇵🇱", "first": ["Jakub", "Julia", "Jan"], "last": ["Nowak", "Kowalski", "Wisniewski"], "streets": ["Marszałkowska", "Krakowskie Przedmieście"], "cities": ["Warsaw", "Krakow"], "states": ["Masovian", "Lesser Poland"], "zips": ["00-001", "31-000"], "phone": f"+48 {random.randint(500,899)} {random.randint(100,999)} {random.randint(100,999)}"},
-        "QA": {"country": "Qatar 🇶🇦", "first": ["Fahad", "Noora", "Nasser"], "last": ["Al-Thani", "Al-Kuwari", "Al-Mannai"], "streets": ["Corniche Street", "Al Sadd Street"], "cities": ["Doha", "Al Rayyan"], "states": ["Doha", "Al Rayyan"], "zips": ["00000", "11111"], "phone": f"+974 {random.choice([33,55,66,77])}{random.randint(100000,999999)}"},
-        "SA": {"country": "Saudi Arabia 🇸🇦", "first": ["Salman", "Sara", "Faisal"], "last": ["Al-Saud", "Al-Otaibi", "Al-Qahtani"], "streets": ["King Fahd Road", "Tahlia Street"], "cities": ["Riyadh", "Jeddah"], "states": ["Riyadh", "Makkah"], "zips": ["11564", "21411"], "phone": f"+966 5{random.randint(0,9)} {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "SG": {"country": "Singapore 🇸🇬", "first": ["Wei", "Li", "Jie"], "last": ["Tan", "Lim", "Lee"], "streets": ["Orchard Road", "Marina Bay Link"], "cities": ["Singapore", "Jurong"], "states": ["Central", "West"], "zips": ["238888", "600101"], "phone": f"+65 {random.choice([8,9])}{random.randint(1000000,9999999)}"},
-        "ES": {"country": "Spain 🇪🇸", "first": ["Hugo", "Lucia", "Mateo"], "last": ["Garcia", "Martinez", "Lopez"], "streets": ["Gran Via", "Paseo de la Castellana"], "cities": ["Madrid", "Barcelona"], "states": ["Madrid", "Catalonia"], "zips": ["28001", "08001"], "phone": f"+34 6{random.randint(10,99)} {random.randint(100,999)} {random.randint(100,999)}"},
-        "SE": {"country": "Sweden 🇸🇪", "first": ["William", "Alice", "Liam"], "last": ["Andersson", "Johansson", "Karlsson"], "streets": ["Sveavägen", "Drottninggatan"], "cities": ["Stockholm", "Gothenburg"], "states": ["Stockholm", "Västra Götaland"], "zips": ["111 20", "411 10"], "phone": f"+46 7{random.randint(0,9)} {random.randint(1000000,9999999)}"},
-        "CH": {"country": "Switzerland 🇨🇭", "first": ["Noah", "Mia", "Liam"], "last": ["Muller", "Meier", "Schmid"], "streets": ["Bahnhofstrasse", "Rue du Rhone"], "cities": ["Zurich", "Geneva"], "states": ["Zurich", "Geneva"], "zips": ["8001", "1201"], "phone": f"+41 7{random.choice([6,7,8,9])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "TH": {"country": "Thailand 🇹🇭", "first": ["Somchai", "Suda", "Arthit"], "last": ["Saelim", "Wong", "Srisai"], "streets": ["Sukhumvit Road", "Silom Road"], "cities": ["Bangkok", "Chiang Mai"], "states": ["Bangkok", "Chiang Mai"], "zips": ["10110", "50000"], "phone": f"+66 8{random.randint(1,9)} {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "TR": {"country": "Turkiye 🇹🇷", "first": ["Yusuf", "Zeynep", "Mustafa"], "last": ["Yilmaz", "Kaya", "Demir"], "streets": ["Istiklal", "Ataturk Bulvari"], "cities": ["Istanbul", "Ankara"], "states": ["Istanbul", "Ankara"], "zips": ["34000", "06000"], "phone": f"+90 5{random.randint(10,59)} {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "UK": {"country": "United Kingdom 🇬🇧", "first": ["George", "Olivia", "Arthur"], "last": ["Smith", "Jones", "Williams"], "streets": ["High Street", "Station Road"], "cities": ["London", "Manchester"], "states": ["England", "Scotland"], "zips": ["SW1A 1AA", "M1 1AA"], "phone": f"+44 7{random.randint(100,999)} {random.randint(100000,999999)}"},
-        "US": {"country": "United States 🇺🇸", "first": ["James", "Mary", "Robert"], "last": ["Smith", "Johnson", "Williams"], "streets": ["Broadway", "Main St"], "cities": ["New York", "Los Angeles"], "states": ["NY", "CA"], "zips": ["10001", "90001"], "phone": f"+1 ({random.randint(200,999)}) {random.randint(200,999)}-{random.randint(1000,9999)}"},
-        "ID": {"country": "Indonesia 🇮🇩", "first": ["Budi", "Siti", "Agus", "Ayu"], "last": ["Setiawan", "Lestari", "Santoso", "Saputra"], "streets": ["Jl. Sudirman", "Jl. Thamrin", "Jl. Gatot Subroto"], "cities": ["Jakarta", "Surabaya", "Bandung", "Medan"], "states": ["DKI Jakarta", "Jawa Timur", "Jawa Barat"], "zips": ["10110", "60271", "40111"], "phone": f"+62 8{random.choice([1,2,5,9])} {random.randint(1000,9999)} {random.randint(1000,9999)}"}
+        "dz": {"country": "Algeria 🇩🇿", "first": ["Amine", "Fatima", "Mohamed", "Amina"], "last": ["Benali", "Khelifi", "Brahimi", "Mansouri"], "streets": ["Rue Didouche Mourad", "Blvd Mohamed V"], "cities": ["Algiers", "Oran", "Constantine"], "states": ["Algiers", "Oran"], "zips": ["16000", "31000", "25000"], "phone": f"+213 55{random.randint(100000, 999999):06d}"},
+        "ar": {"country": "Argentina 🇦🇷", "first": ["Mateo", "Sofia", "Lucas", "Valentina"], "last": ["Gomez", "Fernandez", "Lopez", "Diaz"], "streets": ["Av. Corrientes", "Calle Florida"], "cities": ["Buenos Aires", "Cordoba"], "states": ["Buenos Aires", "Cordoba"], "zips": ["C1043", "X5000"], "phone": f"+54 9 11 {random.randint(1000,9999)}-{random.randint(1000,9999)}"},
+        "au": {"country": "Australia 🇦🇺", "first": ["Jack", "Charlotte", "Oliver"], "last": ["Smith", "Wilson", "Johnson"], "streets": ["Collins St", "George St"], "cities": ["Sydney", "Melbourne"], "states": ["NSW", "Victoria"], "zips": ["2000", "3000"], "phone": f"+61 4{random.randint(10,99)} {random.randint(100,999)} {random.randint(100,999)}"},
+        "bh": {"country": "Bahrain 🇧🇭", "first": ["Ali", "Zainab", "Mohammed", "Fatima"], "last": ["Hassan", "Ahmed", "Al-Khalifa"], "streets": ["Road No 2803", "King Faisal Hwy"], "cities": ["Manama", "Riffa"], "states": ["Capital", "Southern"], "zips": ["328", "901"], "phone": f"+973 {random.choice([33,34,36,39])}{random.randint(100000, 999999):06d}"},
+        "bd": {"country": "Bangladesh 🇧🇩", "first": ["Rahim", "Ayesha", "Tanvir", "Nusrat"], "last": ["Uddin", "Begum", "Ahmed"], "streets": ["Motijheel C/A", "Gulshan Ave"], "cities": ["Dhaka", "Chittagong"], "states": ["Dhaka", "Chittagong"], "zips": ["1000", "4000"], "phone": f"+880 17{random.randint(10000000, 99999999)}"},
+        "be": {"country": "Belgium 🇧🇪", "first": ["Lucas", "Camille", "Arthur"], "last": ["Janssen", "Dubois", "Peeters"], "streets": ["Rue de la Loi", "Meir"], "cities": ["Brussels", "Antwerp"], "states": ["Brussels", "Flanders"], "zips": ["1000", "2000"], "phone": f"+32 4{random.randint(70,99)} {random.randint(100000,999999)}"},
+        "br": {"country": "Brazil 🇧🇷", "first": ["Anderson", "Mariana", "Gabriel"], "last": ["Silva", "Santos", "Oliveira"], "streets": ["Av. Paulista", "Copacabana"], "cities": ["São Paulo", "Rio de Janeiro"], "states": ["SP", "RJ"], "zips": ["01310-100", "22041-001"], "phone": f"+55 11 9{random.randint(1000,9999)}-{random.randint(1000,9999)}"},
+        "kh": {"country": "Cambodia 🇰🇭", "first": ["Sokha", "Vanna", "Dara", "Chan"], "last": ["Chan", "Seng", "Chea"], "streets": ["Preah Monivong Blvd", "Sihanouk Blvd"], "cities": ["Phnom Penh", "Siem Reap"], "states": ["Phnom Penh", "Siem Reap"], "zips": ["12000", "17000"], "phone": f"+855 {random.choice([10,12,69,93])} {random.randint(100, 999)} {random.randint(100, 999)}"},
+        "ca": {"country": "Canada 🇨🇦", "first": ["Liam", "Olivia", "Noah"], "last": ["Tremblay", "Roy", "Gagnon"], "streets": ["Yonge St", "Queen St W"], "cities": ["Toronto", "Vancouver"], "states": ["Ontario", "British Columbia"], "zips": ["M4W 2G8", "V6B 1B6"], "phone": f"+1 416-{random.randint(200,999)}-{random.randint(1000,9999)}"},
+        "co": {"country": "Colombia 🇨🇴", "first": ["Santiago", "Valeria", "Mateo"], "last": ["Rodriguez", "Lopez", "Garcia"], "streets": ["Cra. 7", "Calle 50"], "cities": ["Bogota", "Medellin"], "states": ["Cundinamarca", "Antioquia"], "zips": ["110311", "050001"], "phone": f"+57 3{random.randint(10,29)} {random.randint(1000000, 9999999)}"},
+        "dk": {"country": "Denmark 🇩🇰", "first": ["Magnus", "Ida", "Oliver"], "last": ["Nielsen", "Jensen", "Hansen"], "streets": ["Strøget", "Vesterbrogade"], "cities": ["Copenhagen", "Aarhus"], "states": ["Capital Region", "Central Denmark"], "zips": ["1160", "8000"], "phone": f"+45 {random.randint(20,99)} {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)}"},
+        "eg": {"country": "Egypt 🇪🇬", "first": ["Ahmed", "Nour", "Mohamed", "Salma"], "last": ["Mohamed", "Ibrahim", "Hassan"], "streets": ["Tahrir Square", "Corniche El Nil"], "cities": ["Cairo", "Alexandria"], "states": ["Cairo", "Alexandria"], "zips": ["11511", "21500"], "phone": f"+20 10 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
+        "fi": {"country": "Finland 🇫🇮", "first": ["Eetu", "Aino", "Leo"], "last": ["Korhonen", "Virtanen", "Mäkinen"], "streets": ["Mannerheimintie", "Aleksanterinkatu"], "cities": ["Helsinki", "Espoo"], "states": ["Uusimaa", "Pirkanmaa"], "zips": ["00100", "02100"], "phone": f"+358 40 {random.randint(100,999)} {random.randint(1000,9999)}"},
+        "fr": {"country": "France 🇫🇷", "first": ["Gabriel", "Jade", "Louis"], "last": ["Bernard", "Petit", "Robert"], "streets": ["Rue de la Paix", "Champs-Élysées"], "cities": ["Paris", "Lyon"], "states": ["Île-de-France", "Auvergne-Rhône-Alpes"], "zips": ["75001", "69001"], "phone": f"+33 6 {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)}"},
+        "de": {"country": "Germany 🇩🇪", "first": ["Maximilian", "Anna", "Alexander"], "last": ["Schmidt", "Weber", "Fischer"], "streets": ["Hauptstraße", "Friedrichstraße"], "cities": ["Berlin", "Munich"], "states": ["Berlin", "Bavaria"], "zips": ["10115", "80331"], "phone": f"+49 151 {random.randint(1000000,9999999)}"},
+        "id": {"country": "Indonesia 🇮🇩", "first": ["Budi", "Siti", "Agus", "Ayu"], "last": ["Setiawan", "Lestari", "Santoso", "Saputra"], "streets": ["Jl. Sudirman", "Jl. Thamrin", "Jl. Gatot Subroto"], "cities": ["Jakarta", "Surabaya", "Bandung", "Medan"], "states": ["DKI Jakarta", "Jawa Timur", "Jawa Barat"], "zips": ["10110", "60271", "40111"], "phone": f"+62 8{random.choice([1,2,5,9])} {random.randint(1000,9999)} {random.randint(1000,9999)}"},
+        "in": {"country": "India 🇮🇳", "first": ["Aarav", "Diya", "Vivaan"], "last": ["Sharma", "Patel", "Gupta"], "streets": ["MG Road", "Connaught Place"], "cities": ["Mumbai", "Delhi"], "states": ["Maharashtra", "Delhi"], "zips": ["400001", "110001"], "phone": f"+91 9{random.randint(100000000,999999999)}"},
+        "it": {"country": "Italy 🇮🇹", "first": ["Leonardo", "Giulia", "Francesco"], "last": ["Rossi", "Russo", "Ferrari"], "streets": ["Via Roma", "Corso Vittorio Emanuele"], "cities": ["Rome", "Milan"], "states": ["Lazio", "Lombardy"], "zips": ["00100", "20100"], "phone": f"+39 3{random.randint(10,99)} {random.randint(1000000,9999999)}"},
+        "jp": {"country": "Japan 🇯🇵", "first": ["Haruto", "Yui", "Sota"], "last": ["Sato", "Suzuki", "Takahashi"], "streets": ["Nagata-cho", "Oshiage"], "cities": ["Tokyo", "Osaka"], "states": ["Tokyo", "Osaka"], "zips": ["100-0001", "530-0001"], "phone": f"+81 90-{random.randint(1000,9999)}-{random.randint(1000,9999)}"},
+        "kz": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias"], "last": ["Nurlan", "Omarov", "Kasenov"], "streets": ["Dostyk Ave", "Konaev St"], "cities": ["Astana", "Almaty"], "states": ["Astana City", "Almaty City"], "zips": ["010000", "050000"], "phone": f"+7 7{random.choice(['01','02','05','07','75','77'])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
+        "my": {"country": "Malaysia 🇲🇾", "first": ["Ahmad", "Siti", "Wei"], "last": ["Tan", "Lee", "Wong"], "streets": ["Jalan Ampang", "Jalan Bukit Bintang"], "cities": ["Kuala Lumpur", "George Town"], "states": ["Wilayah Persekutuan", "Penang"], "zips": ["50450", "10200"], "phone": f"+60 1{random.randint(1,9)}-{random.randint(1000,9999)} {random.randint(1000,9999)}"},
+        "mx": {"country": "Mexico 🇲🇽", "first": ["Mateo", "Sofia", "Santiago"], "last": ["Garcia", "Martinez", "Lopez"], "streets": ["Paseo de la Reforma", "Av. Insurgentes"], "cities": ["Mexico City", "Guadalajara"], "states": ["CDMX", "Jalisco"], "zips": ["06600", "44100"], "phone": f"+52 55 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
+        "ma": {"country": "Morocco 🇲🇦", "first": ["Youssef", "Kenza", "Mehdi"], "last": ["Alami", "Bennani", "Tazi"], "streets": ["Mohammed V Blvd", "Allal Ben Abdellah"], "cities": ["Casablanca", "Rabat"], "states": ["Casablanca-Settat", "Rabat-Salé-Kénitra"], "zips": ["20000", "10000"], "phone": f"+212 6{random.randint(10,99)} {random.randint(10000,99999)}"},
+        "nz": {"country": "New Zealand 🇳🇿", "first": ["Oliver", "Isla", "Jack"], "last": ["Clark", "Wright", "Smith"], "streets": ["Queen Street", "Lambton Quay"], "cities": ["Auckland", "Wellington"], "states": ["Auckland", "Wellington"], "zips": ["1010", "6011"], "phone": f"+64 21 {random.randint(100,999)} {random.randint(1000,9999)}"},
+        "pa": {"country": "Panama 🇵🇦", "first": ["Carlos", "Maria", "Jose"], "last": ["Perez", "Gonzalez", "Rodriguez"], "streets": ["Via España", "Calle 50"], "cities": ["Panama City", "San Miguelito"], "states": ["Panama", "San Miguelito"], "zips": ["0801", "0803"], "phone": f"+507 6{random.randint(100,999)}-{random.randint(1000,9999)}"},
+        "pk": {"country": "Pakistan 🇵🇰", "first": ["Hamza", "Ayesha", "Muhammad"], "last": ["Khan", "Malik", "Ahmed"], "streets": ["Jinnah Avenue", "Mall Road"], "cities": ["Islamabad", "Karachi"], "states": ["ICT", "Sindh"], "zips": ["44000", "74000"], "phone": f"+92 3{random.choice(['00','33','45'])}-{random.randint(1000000,9999999)}"},
+        "pe": {"country": "Peru 🇵🇪", "first": ["Diego", "Lucia", "Mateo"], "last": ["Flores", "Ramos", "Garcia"], "streets": ["Av. Larco", "Av. Javier Prado"], "cities": ["Lima", "Arequipa"], "states": ["Lima", "Arequipa"], "zips": ["15074", "04001"], "phone": f"+51 9{random.randint(10000000,99999999)}"},
+        "pl": {"country": "Poland 🇵🇱", "first": ["Jakub", "Julia", "Jan"], "last": ["Nowak", "Kowalski", "Wisniewski"], "streets": ["Marszałkowska", "Krakowskie Przedmieście"], "cities": ["Warsaw", "Krakow"], "states": ["Masovian", "Lesser Poland"], "zips": ["00-001", "31-000"], "phone": f"+48 {random.randint(500,899)} {random.randint(100,999)} {random.randint(100,999)}"},
+        "qa": {"country": "Qatar 🇶🇦", "first": ["Fahad", "Noora", "Nasser"], "last": ["Al-Thani", "Al-Kuwari", "Al-Mannai"], "streets": ["Corniche Street", "Al Sadd Street"], "cities": ["Doha", "Al Rayyan"], "states": ["Doha", "Al Rayyan"], "zips": ["00000", "11111"], "phone": f"+974 {random.choice([33,55,66,77])}{random.randint(100000,999999)}"},
+        "sa": {"country": "Saudi Arabia 🇸🇦", "first": ["Salman", "Sara", "Faisal"], "last": ["Al-Saud", "Al-Otaibi", "Al-Qahtani"], "streets": ["King Fahd Road", "Tahlia Street"], "cities": ["Riyadh", "Jeddah"], "states": ["Riyadh", "Makkah"], "zips": ["11564", "21411"], "phone": f"+966 5{random.randint(0,9)} {random.randint(100,999)} {random.randint(1000,9999)}"},
+        "sg": {"country": "Singapore 🇸🇬", "first": ["Wei", "Li", "Jie"], "last": ["Tan", "Lim", "Lee"], "streets": ["Orchard Road", "Marina Bay Link"], "cities": ["Singapore", "Jurong"], "states": ["Central", "West"], "zips": ["238888", "600101"], "phone": f"+65 {random.choice([8,9])}{random.randint(1000000,9999999)}"},
+        "es": {"country": "Spain 🇪🇸", "first": ["Hugo", "Lucia", "Mateo"], "last": ["Garcia", "Martinez", "Lopez"], "streets": ["Gran Via", "Paseo de la Castellana"], "cities": ["Madrid", "Barcelona"], "states": ["Madrid", "Catalonia"], "zips": ["28001", "08001"], "phone": f"+34 6{random.randint(10,99)} {random.randint(100,999)} {random.randint(100,999)}"},
+        "se": {"country": "Sweden 🇸🇪", "first": ["William", "Alice", "Liam"], "last": ["Andersson", "Johansson", "Karlsson"], "streets": ["Sveavägen", "Drottninggatan"], "cities": ["Stockholm", "Gothenburg"], "states": ["Stockholm", "Västra Götaland"], "zips": ["111 20", "411 10"], "phone": f"+46 7{random.randint(0,9)} {random.randint(1000000,9999999)}"},
+        "ch": {"country": "Switzerland 🇨🇭", "first": ["Noah", "Mia", "Liam"], "last": ["Muller", "Meier", "Schmid"], "streets": ["Bahnhofstrasse", "Rue du Rhone"], "cities": ["Zurich", "Geneva"], "states": ["Zurich", "Geneva"], "zips": ["8001", "1201"], "phone": f"+41 7{random.choice([6,7,8,9])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
+        "th": {"country": "Thailand 🇹🇭", "first": ["Somchai", "Suda", "Arthit"], "last": ["Saelim", "Wong", "Srisai"], "streets": ["Sukhumvit Road", "Silom Road"], "cities": ["Bangkok", "Chiang Mai"], "states": ["Bangkok", "Chiang Mai"], "zips": ["10110", "50000"], "phone": f"+66 8{random.randint(1,9)} {random.randint(1000,9999)} {random.randint(1000,9999)}"},
+        "tr": {"country": "Turkiye 🇹🇷", "first": ["Yusuf", "Zeynep", "Mustafa"], "last": ["Yilmaz", "Kaya", "Demir"], "streets": ["Istiklal", "Ataturk Bulvari"], "cities": ["Istanbul", "Ankara"], "states": ["Istanbul", "Ankara"], "zips": ["34000", "06000"], "phone": f"+90 5{random.randint(10,59)} {random.randint(100,999)} {random.randint(1000,9999)}"},
+        "uk": {"country": "United Kingdom 🇬🇧", "first": ["George", "Olivia", "Arthur"], "last": ["Smith", "Jones", "Williams"], "streets": ["High Street", "Station Road"], "cities": ["London", "Manchester"], "states": ["England", "Scotland"], "zips": ["SW1A 1AA", "M1 1AA"], "phone": f"+44 7{random.randint(100,999)} {random.randint(100000,999999)}"},
+        "us": {"country": "United States 🇺🇸", "first": ["James", "Mary", "Robert"], "last": ["Smith", "Johnson", "Williams"], "streets": ["Broadway", "Main St"], "cities": ["New York", "Los Angeles"], "states": ["NY", "CA"], "zips": ["10001", "90001"], "phone": f"+1 ({random.randint(200,999)}) {random.randint(200,999)}-{random.randint(1000,9999)}"}
     }
     
-    data = loc_database.get(country_code, loc_database["US"])
+    data = loc_database.get(country_code, loc_database["us"])
     
     fname = random.choice(data["first"])
     lname = random.choice(data["last"])
@@ -337,39 +336,40 @@ def generate_fake_address(message, country_code):
     city = random.choice(data["cities"])
     state = random.choice(data["states"])
     zip_code = random.choice(data["zips"])
-    email = f"{fname.lower()}.{lname.lower()}{random.randint(10,999)}@gmail.com"
     phone = data["phone"]
     
     text = (
-        f"📍 <b>{data['country']} Address Generator</b>\n\n"
+        f"👉 <b>{data['country']} Address Generator</b>\n\n"
         f"𝗙𝘂𝗹𝗹 𝗡𝗮𝗺𝗲: <code>{fname} {lname}</code>\n"
         f"𝗦𝘁𝗿𝗲𝗲𝘁 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: <code>{street}</code>\n"
         f"𝗖𝗶𝘁𝘆/𝗧𝗼𝘄𝗻/𝗩𝗶𝗹𝗹𝗮𝗴𝗲: <code>{city}</code>\n"
         f"𝗦𝘁𝗮𝘁𝗲/𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲/𝗥𝗲𝗴𝗶𝗼𝗻: <code>{state}</code>\n"
         f"𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: <code>{zip_code}</code>\n"
         f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: <code>{phone}</code>\n"
-        f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: <code>{data['country'].split(' ')[0]}</code>\n"
-        f"𝗧𝗲𝗺𝗽𝗼𝗿𝗮𝗿𝘆 𝗘𝗺𝗮𝗶𝗹: <code>{email}</code>"
+        f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: <code>{data['country'].split(' ')[0]}</code>"
     )
     bot.reply_to(message, text, reply_markup=get_main_menu())
 
 def show_country_list(message):
-    text = (
-        "📍 <b>Available Countries for Fake Address:</b>\n\n"
-        "1. Algeria (DZ)\n2. Argentina (AR)\n3. Australia (AU)\n4. Bahrain (BH)\n"
-        "5. Bangladesh (BD)\n6. Belgium (BE)\n7. Brazil (BR)\n8. Cambodia (KH)\n"
-        "9. Canada (CA)\n10. Colombia (CO)\n11. Denmark (DK)\n12. Egypt (EG)\n"
-        "13. Finland (FI)\n14. France (FR)\n15. Germany (DE)\n16. India (IN)\n"
-        "17. Italy (IT)\n18. Japan (JP)\n19. Kazakhstan (KZ)\n20. Malaysia (MY)\n"
-        "21. Mexico (MX)\n22. Morocco (MA)\n23. New Zealand (NZ)\n24. Panama (PA)\n"
-        "25. Pakistan (PK)\n26. Peru (PE)\n27. Poland (PL)\n28. Qatar (QA)\n"
-        "29. Saudi Arabia (SA)\n30. Singapore (SG)\n31. Spain (ES)\n32. Sweden (SE)\n"
-        "33. Switzerland (CH)\n34. Thailand (TH)\n35. Turkiye (TR)\n"
-        "36. United Kingdom (UK)\n37. United States (US)\n"
-        "38. Indonesia (ID)\n\n"
-        "💡 <i>နိုင်ငံကုဒ်ကို ဆက်လက် ပို့ပေးပါ (ဥပမာ - DE, ID, JP)</i>"
-    )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
+    sorted_countries = [
+        ("Algeria", "dz"), ("Argentina", "ar"), ("Australia", "au"), ("Bahrain", "bh"),
+        ("Bangladesh", "bd"), ("Belgium", "be"), ("Brazil", "br"), ("Cambodia", "kh"),
+        ("Canada", "ca"), ("Colombia", "co"), ("Denmark", "dk"), ("Egypt", "eg"),
+        ("Finland", "fi"), ("France", "fr"), ("Germany", "de"), ("India", "in"),
+        ("Indonesia", "id"), ("Italy", "it"), ("Japan", "jp"), ("Kazakhstan", "kz"),
+        ("Malaysia", "my"), ("Mexico", "mx"), ("Morocco", "ma"), ("New Zealand", "nz"),
+        ("Panama", "pa"), ("Pakistan", "pk"), ("Peru", "pe"), ("Poland", "pl"),
+        ("Qatar", "qa"), ("Saudi Arabia", "sa"), ("Singapore", "sg"), ("Spain", "es"),
+        ("Sweden", "se"), ("Switzerland", "ch"), ("Thailand", "th"), ("Turkiye", "tr"),
+        ("United Kingdom", "uk"), ("United States", "us")
+    ]
+    
+    list_str = "📍 <b>Available Countries for Fake Address:</b>\n\n"
+    for idx, (name, code) in enumerate(sorted_countries, 1):
+        list_str += f"{idx}. {name} (<code>{code}</code>)\n"
+        
+    list_str += "\n💡 <i>နိုင်ငံကုဒ် (အသေးစာလုံး) ကို ဆက်လက် ပို့ပေးပါ (ဥပမာ - de, id, jp)</i>"
+    bot.reply_to(message, list_str, reply_markup=get_main_menu())
 
 def process_iban_prompt(message):
     if check_cancel(message): return
@@ -404,8 +404,8 @@ def handle_all_messages(message):
     if text in ["🔐 Gen BIN", "/gen"]:
         bot.reply_to(message, "⏳ <b>BIN Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu())
         return
-    elif text in ["📍 Fake Address", "/fake"]:
-        bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>US</code>, <code>DE</code>, <code>JP</code>, <code>ID</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu())
+    elif text in ["👉 Fake Address", "/fake"]:
+        bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>us</code>, <code>de</code>, <code>jp</code>, <code>id</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu())
         return
     elif text in ["ℹ️ IBAN Gen", "/iban"]:
         msg = bot.reply_to(message, "⏳ <b>IBAN Generator</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>DE</code>, <code>GB</code>)", reply_markup=get_main_menu())
@@ -421,10 +421,9 @@ def handle_all_messages(message):
         show_country_list(message)
         return
 
-    # List of ALL 38 Countries
-    all_country_codes = ["DZ","AR","AU","BH","BD","BE","BR","KH","CA","CO","DK","EG","FI","FR","DE","IN","IT","JP","KZ","MY","MX","MA","NZ","PA","PK","PE","PL","QA","SA","SG","ES","SE","CH","TH","TR","UK","US","GB","ID"]
-    if text.upper() in all_country_codes:
-        generate_fake_address(message, text.upper())
+    all_country_codes = ["dz","ar","au","bh","bd","be","br","kh","ca","co","dk","eg","fi","fr","de","in","it","jp","kz","my","mx","ma","nz","pa","pk","pe","pl","qa","sa","sg","es","se","ch","th","tr","uk","us","gb","id"]
+    if text.lower() in all_country_codes:
+        generate_fake_address(message, text.lower())
         return
 
     if re.match(r'^\d{6}', text):

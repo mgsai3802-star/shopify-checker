@@ -8,7 +8,7 @@ from threading import Thread
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 if not BOT_TOKEN:
-    print("Error: BOT_TOKEN မရှိပါ။")
+    print("Error: BOT_TOKEN ကို Render Environment တွင် မတွေ့ပါ။")
     exit(1)
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
@@ -41,21 +41,21 @@ def cmd_me(message):
     if not is_authorized(message.from_user.id): return
     user = message.from_user
     text = (
-        f"🔍 Telegram Account Info\n\n"
-        f"👤 Name: {user.first_name} {user.last_name or ''}\n"
-        f"🆔 User ID: {user.id}\n"
-        f"🌐 Username: @{user.username or 'None'}\n"
-        f"⚙️ Language: {user.language_code or 'N/A'}"
+        f"🔍 <b>Telegram Account Info</b>\n\n"
+        f"👤 Name: <code>{user.first_name} {user.last_name or ''}</code>\n"
+        f"🆔 User ID: <code>{user.id}</code>\n"
+        f"🌐 Username: <code>@{user.username or 'None'}</code>\n"
+        f"⚙️ Language: <code>{user.language_code or 'N/A'}</code>"
     )
-    bot.reply_to(message, f"<pre>{text}</pre>")
+    bot.reply_to(message, text)
 
-# 2. CC Generator (/gen) with BIN Info Footer
+# 2. CC Generator (/gen) - Each card in individual <code> for independent copying
 @bot.message_handler(commands=['gen'])
 def cmd_gen(message):
     if not is_authorized(message.from_user.id): return
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        bot.reply_to(message, "<pre>❌ အသုံးပြုနည်း: /gen 412236\nသို့မဟုတ် /gen 62584005116|02|29</pre>")
+        bot.reply_to(message, "❌ <b>အသုံးပြုနည်း:</b> <code>/gen 412236</code>\nသို့မဟုတ် <code>/gen 62584005116|02|29</code>")
         return
         
     arg = parts[1].strip()
@@ -91,9 +91,8 @@ def cmd_gen(message):
         else:
             cvv = "".join([str(random.randint(0, 9)) for _ in range(cvv_length)])
             
-        cards.append(f"{full_cc}|{mm}|{yyyy}|{cvv}")
+        cards.append(f"<code>{full_cc}|{mm}|{yyyy}|{cvv}</code>")
     
-    # Fetch BIN Info
     bin6 = template_cc[:6]
     brand, bank, country, type_cc = "VISA", "COMMERCIAL BANK", "United States", "CREDIT"
     try:
@@ -107,12 +106,16 @@ def cmd_gen(message):
     except:
         pass
 
-    header = f"𝗕𝗜𝗡 ⇾ {bin6}\n𝗔𝗺𝗼𝘂𝗻𝘁 ⇾ 10\n\n"
     cards_str = "\n".join(cards)
-    footer = f"\n\n𝗜𝗻𝗳𝗼: {brand} - {type_cc}\n𝗕𝗮𝗻𝗸: {bank}\n𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {country}"
-    
-    full_response = f"{header}<pre>{cards_str}</pre>{footer}"
-    bot.reply_to(message, full_response)
+    text = (
+        f"<b>𝗕𝗜𝗡 ⇾</b> <code>{bin6}</code>\n"
+        f"<b>𝗔𝗺𝗼𝘂𝗻𝘁 ⇾</b> <code>10</code>\n\n"
+        f"{cards_str}\n\n"
+        f"<b>𝗜𝗻𝗳𝗼:</b> <code>{brand} - {type_cc}</code>\n"
+        f"<b>𝗕𝗮𝗻𝗸:</b> <code>{bank}</code>\n"
+        f"<b>𝗖𝗼𝘂𝗻𝘁𝗿𝘆:</b> <code>{country}</code>"
+    )
+    bot.reply_to(message, text)
 
 # 3. IBAN Generator (/iban)
 @bot.message_handler(commands=['iban'])
@@ -120,7 +123,7 @@ def cmd_iban(message):
     if not is_authorized(message.from_user.id): return
     parts = message.text.split()
     if len(parts) < 2:
-        bot.reply_to(message, "<pre>❌ နိုင်ငံကုဒ် ထည့်ရန်လိုပါသည်။ ဥပမာ - /iban DE သို့မဟုတ် /iban GB</pre>")
+        bot.reply_to(message, "❌ <b>နိုင်ငံကုဒ် ထည့်ရန်လိုပါသည်။</b> ဥပမာ - <code>/iban DE</code>")
         return
         
     country = parts[1].upper()
@@ -132,16 +135,16 @@ def cmd_iban(message):
     check_dig = f"{random.randint(10, 99)}"
     
     text = (
-        f"🌍 IBAN Details\n\n"
-        f"Country: {country} {flag}\n"
-        f"IBAN: {country}{check_dig}{bank_code}{acc_num}\n"
-        f"Length: 22\n\n"
-        f"Bank Code: {bank_code}\n"
-        f"Account Number: {acc_num}\n"
-        f"Check Digits: {check_dig}\n"
-        f"BBAN: {bank_code}{acc_num}"
+        f"🌍 <b>IBAN Details</b>\n\n"
+        f"Country: <code>{country} {flag}</code>\n"
+        f"IBAN: <code>{country}{check_dig}{bank_code}{acc_num}</code>\n"
+        f"Length: <code>22</code>\n\n"
+        f"Bank Code: <code>{bank_code}</code>\n"
+        f"Account Number: <code>{acc_num}</code>\n"
+        f"Check Digits: <code>{check_dig}</code>\n"
+        f"BBAN: <code>{bank_code}{acc_num}</code>"
     )
-    bot.reply_to(message, f"<pre>{text}</pre>")
+    bot.reply_to(message, text)
 
 # 4. CPF Generator (/cpf)
 @bot.message_handler(commands=['cpf'])
@@ -156,16 +159,16 @@ def cmd_cpf(message):
     place = random.choice(places)
     
     text = (
-        f"📍 BR 🇧🇷 CPF Generator\n\n"
-        f"𝗡𝗮𝗺𝗲: {name}\n"
-        f"𝗖𝗣𝗙: {cpf}\n"
-        f"𝗗𝗼𝗕: 1988-04-10\n"
-        f"𝗣𝗹𝗮𝗰𝗲: {place}\n"
-        f"𝗗𝗲𝗹𝗶𝘃𝗲𝗿𝘆: Segunda ({random.randint(1,28)}/{random.randint(1,12)})"
+        f"📍 <b>BR 🇧🇷 CPF Generator</b>\n\n"
+        f"𝗡𝗮𝗺𝗲: <code>{name}</code>\n"
+        f"𝗖𝗣𝗙: <code>{cpf}</code>\n"
+        f"𝗗𝗼𝗕: <code>1988-04-10</code>\n"
+        f"𝗣𝗹𝗮𝗰𝗲: <code>{place}</code>\n"
+        f"𝗗𝗲𝗹𝗶𝘃𝗲𝗿𝘆: <code>Segunda ({random.randint(1,28)}/{random.randint(1,12)})</code>"
     )
-    bot.reply_to(message, f"<pre>{text}</pre>")
+    bot.reply_to(message, text)
 
-# 5. Massive 37-Country Address Generator (/fake) with rich localized data
+# 5. Massive 37-Country Address Generator (/fake)
 @bot.message_handler(commands=['fake'])
 def cmd_fake(message):
     if not is_authorized(message.from_user.id): return
@@ -173,7 +176,7 @@ def cmd_fake(message):
     
     if len(parts) < 2:
         country_list_text = (
-            "📍 Available Countries for Fake Address:\n\n"
+            "📍 <b>Available Countries for Fake Address:</b>\n\n"
             "1. Algeria (DZ)\n2. Argentina (AR)\n3. Australia (AU)\n4. Bahrain (BH)\n"
             "5. Bangladesh (BD)\n6. Belgium (BE)\n7. Brazil (BR)\n8. Cambodia (KH)\n"
             "9. Canada (CA)\n10. Colombia (CO)\n11. Denmark (DK)\n12. Egypt (EG)\n"
@@ -184,9 +187,9 @@ def cmd_fake(message):
             "29. Saudi Arabia (SA)\n30. Singapore (SG)\n31. Spain (ES)\n32. Sweden (SE)\n"
             "33. Switzerland (CH)\n34. Thailand (TH)\n35. Turkiye (TR)\n"
             "36. United Kingdom (UK)\n37. United States (US)\n\n"
-            "💡 အသုံးပြုပုံ: /fake DE သို့မဟုတ် /fake US"
+            "💡 <i>အသုံးပြုပုံ:</i> <code>/fake DE</code> သို့မဟုတ် <code>/fake US</code>"
         )
-        bot.reply_to(message, f"<pre>{country_list_text}</pre>")
+        bot.reply_to(message, country_list_text)
         return
 
     country = parts[1].upper()
@@ -213,7 +216,7 @@ def cmd_fake(message):
         "KZ": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias", "Madina", "Alisher", "Zhansaya", "Rustam", "Assel", "Nurlan"], "last": ["Nurlan", "Omarov", "Kasenov", "Akhmetov", "Suleimenov", "Ibraev", "Kenzhebayev"], "streets": ["Dostyk Ave 18", "Konaev St 25", "Abay Ave 50", "Beibitshilik St 12", "Republic Ave 40"], "cities": ["Astana", "Almaty", "Shymkent", "Aktobe", "Karaganda", "Taraz", "Pavlodar", "Ust-Kamenogorsk"], "states": ["Astana City", "Almaty City", "Shymkent City", "Karaganda Region", "Aktobe Region"], "zips": ["010000", "050000", "160000", "030000", "100000", "080000"], "phone": "+7 7172 12 34 56"},
         "MY": {"country": "Malaysia 🇲🇾", "first": ["Ahmad", "Siti", "Wei", "Ling", "Ravi", "Priya", "Farhan", "Nurul", "Zack"], "last": ["Tan", "Lee", "Wong", "Kumar", "Bin", "Abdullah", "Chong", "Ramasamy", "Ng"], "streets": ["Jalan Ampang 50", "Jalan Bukit Bintang 12", "Jalan Tun Razak 100", "Jalan Sultan Ismail 20"], "cities": ["Kuala Lumpur", "George Town", "Johor Bahru", "Ipoh", "Malacca City", "Shah Alam", "Petaling Jaya"], "states": ["Wilayah Persekutuan", "Penang", "Johor", "Perak", "Selangor"], "zips": ["50450", "10200", "80000", "30000", "40000", "88000"], "phone": "+60 3 2161 2345"},
         "MX": {"country": "Mexico 🇲🇽", "first": ["Mateo", "Sofia", "Santiago", "Valentina", "Leonardo", "Camila", "Sebastian", "Ximena"], "last": ["Garcia", "Martinez", "Lopez", "Gonzalez", "Perez", "Rodriguez", "Sanchez", "Ramirez"], "streets": ["Paseo de la Reforma 222", "Av. Insurgentes 500", "Calle Madero 15", "Av. Juarez 80"], "cities": ["Mexico City", "Guadalajara", "Monterrey", "Puebla", "Tijuana", "Leon", "Juarez", "Cancun"], "states": ["CDMX", "Jalisco", "Nuevo Leon", "Puebla", "Baja California", "Guanajuato"], "zips": ["06600", "44100", "64000", "72000", "22000", "37000"], "phone": "+52 55 1234 5678"},
-        "MA": {"country": "Morocco 🇲🇦", "first": ["Youssef", "Kenza", "Mehdi", "Salma", "Amine", "Rim", "Hamza", "Hiba"], "last": ["Alami", "Bennani", "Tazi", "Idrissi", "Chraibi", "Amrani", "Fassi"], "streets": ["Mohammed V Blvd 12", "Allal Ben Abdellah 30", "Av. Hassan II 50", "Rue Farhat Hachad 5"], "cities": ["Casablanca", "Rabat", "Marrakech", "Fez", "Tangier", "Agadir", "Meknes"], "states": ["Casablanca-Settat", "Rabat-Salé-Kénitra", "Marrakech-Safi", "Fès-Meknès"], "zips": ["20000", "10000", "40000", "30000", "90000", "80000"], "phone": "+212 5 22 12 34 56"},
+        "MA": {country": "Morocco 🇲🇦", "first": ["Youssef", "Kenza", "Mehdi", "Salma", "Amine", "Rim", "Hamza", "Hiba"], "last": ["Alami", "Bennani", "Tazi", "Idrissi", "Chraibi", "Amrani", "Fassi"], "streets": ["Mohammed V Blvd 12", "Allal Ben Abdellah 30", "Av. Hassan II 50", "Rue Farhat Hachad 5"], "cities": ["Casablanca", "Rabat", "Marrakech", "Fez", "Tangier", "Agadir", "Meknes"], "states": ["Casablanca-Settat", "Rabat-Salé-Kénitra", "Marrakech-Safi", "Fès-Meknès"], "zips": ["20000", "10000", "40000", "30000", "90000", "80000"], "phone": "+212 5 22 12 34 56"},
         "NZ": {"country": "New Zealand 🇳🇿", "first": ["Oliver", "Isla", "Jack", "Charlotte", "Noah", "Harper", "Leo", "Ava"], "last": ["Clark", "Wright", "Smith", "Wilson", "Taylor", "Johnson", "Martin", "Robinson"], "streets": ["Queen Street 100", "Lambton Quay 50", "Victoria Street 12", "Ponsonby Road 40"], "cities": ["Auckland", "Wellington", "Christchurch", "Hamilton", "Tauranga", "Dunedin"], "states": ["Auckland", "Wellington", "Canterbury", "Waikato", "Bay of Plenty"], "zips": ["1010", "6011", "8011", "3204", "3110", "9016"], "phone": "+64 9 309 1234"},
         "PA": {"country": "Panama 🇵🇦", "first": ["Carlos", "Maria", "Jose", "Ana", "Luis", "Carmen", "Javier", "Isabel"], "last": ["Perez", "Gonzalez", "Rodriguez", "Sanchez", "Torres", "Castillo", "Morales"], "streets": ["Via España 120", "Calle 50 45", "Av. Balboa 200", "Via Argentina 10"], "cities": ["Panama City", "San Miguelito", "David", "Colon", "Santiago", "Chitre"], "states": ["Panama", "San Miguelito", "Chiriqui", "Colon", "Veraguas"], "zips": ["0801", "0803", "0401", "0301", "0901"], "phone": "+507 200 1234"},
         "PK": {"country": "Pakistan 🇵🇰", "first": ["Hamza", "Ayesha", "Muhammad", "Fatima", "Ali", "Zainab", "Usman", "Khadija"], "last": ["Khan", "Malik", "Ahmed", "Butt", "Chaudhry", "Sheikh", "Qureshi", "Siddiqui"], "streets": ["Jinnah Avenue 10", "Mall Road 50", "F-7 Markaz 5", "Shahrah-e-Faisal 200"], "cities": ["Islamabad", "Karachi", "Lahore", "Faisalabad", "Rawalpindi", "Multan", "Peshawar", "Quetta"], "states": ["ICT", "Sindh", "Punjab", "Khyber Pakhtunkhwa", "Balochistan"], "zips": ["44000", "74000", "54000", "38000", "46000", "60000", "25000", "87300"], "phone": "+92 51 111 222 333"},
@@ -242,17 +245,17 @@ def cmd_fake(message):
     email = f"{fname.lower()}.{lname.lower()}{random.randint(10,99)}@gmail.com"
     
     text = (
-        f"📍 {data['country']} Address Generator\n\n"
-        f"𝗙𝘂𝗹𝗹 𝗡𝗮𝗺𝗲: {fname} {lname}\n"
-        f"𝗦𝘁𝗿𝗲𝗲𝘁 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: {street}\n"
-        f"𝗖𝗶𝘁𝘆/𝗧𝗼𝘄𝗻/𝗩𝗶𝗹𝗹𝗮𝗴𝗲: {city}\n"
-        f"𝗦𝘁𝗮𝘁𝗲/𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲/𝗥𝗲𝗴𝗶𝗼𝗻: {state}\n"
-        f"𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: {zip_code}\n"
-        f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: {data['phone']}\n"
+        f"📍 <b>{data['country']} Address Generator</b>\n\n"
+        f"𝗙𝘂𝗹𝗹 𝗡𝗮𝗺𝗲: <code>{fname} {lname}</code>\n"
+        f"𝗦𝘁𝗿𝗲𝗲𝘁 𝗔𝗱𝗱𝗿𝗲𝘀𝘀: <code>{street}</code>\n"
+        f"𝗖𝗶𝘁𝘆/𝗧𝗼𝘄𝗻/𝗩𝗶𝗹𝗹𝗮𝗴𝗲: <code>{city}</code>\n"
+        f"𝗦𝘁𝗮𝘁𝗲/𝗣𝗿𝗼𝘃𝗶𝗻𝗰𝗲/𝗥𝗲𝗴𝗶𝗼𝗻: <code>{state}</code>\n"
+        f"𝗣𝗼𝘀𝘁𝗮𝗹 𝗖𝗼𝗱𝗲: <code>{zip_code}</code>\n"
+        f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: <code>{data['phone']}</code>\n"
         f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {data['country']}\n"
-        f"𝗧𝗲𝗺𝗽𝗼𝗿𝗮𝗿𝘆 𝗘𝗺𝗮𝗶𝗹: {email}"
+        f"𝗧𝗲𝗺𝗽𝗼𝗿𝗮𝗿𝘆 𝗘𝗺𝗮𝗶𝗹: <code>{email}</code>"
     )
-    bot.reply_to(message, f"<pre>{text}</pre>")
+    bot.reply_to(message, text)
 
 # 6. Ping Test (/ping)
 @bot.message_handler(commands=['ping'])
@@ -261,19 +264,19 @@ def cmd_ping(message):
     latency = random.randint(110, 240)
     text = (
         f"Ｐｏｎｇ 🏓\n\n"
-        f"⚡ Response Time\n"
-        f"├ 📊 Latency: {latency} ms\n"
-        f"└ 🎯 Quality: 🟢 Excellent\n\n"
-        f"🤖 Bot Status: Online & Responsive"
+        f"⚡ <b>Response Time</b>\n"
+        f"├ 📊 Latency: <code>{latency} ms</code>\n"
+        f"└ 🎯 Quality: <code>🟢 Excellent</code>\n\n"
+        f"🤖 <b>Bot Status:</b> Online & Responsive"
     )
-    bot.reply_to(message, f"<pre>{text}</pre>")
+    bot.reply_to(message, text)
 
 # Help / Start Command
 @bot.message_handler(commands=['start', 'help', 'cmd'])
 def send_cmd(message):
     if not is_authorized(message.from_user.id): return
     text = (
-        "🛠 Bot Commands List\n\n"
+        "🛠 <b>Bot Commands List</b>\n\n"
         "🔍 /me - Telegram Account Info\n"
         "🔐 /gen - CC Generator (/gen bin or /gen bin|mm|yy)\n"
         "ℹ️ /iban {country} - IBAN Generator\n"
@@ -281,7 +284,7 @@ def send_cmd(message):
         "📍 /fake {country} - Address Generator (Type /fake to see 37 countries list)\n"
         "🔍 /ping - Ping Test"
     )
-    bot.reply_to(message, f"<pre>{text}</pre>")
+    bot.reply_to(message, text)
 
 @app.route('/')
 def index():

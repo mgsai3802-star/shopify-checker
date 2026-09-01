@@ -55,23 +55,25 @@ def parse_proxy(proxy_str):
 def extract_clean_response(message):
     if not message:
         return "UNKNOWN_ERROR"
-    message = str(message).upper()
-    if "INSUFFICIENT_FUNDS" in message or "INSUFFICIENT FUNDS" in message:
+    msg_upper = str(message).upper()
+    if "INSUFFICIENT_FUNDS" in msg_upper or "INSUFFICIENT FUNDS" in msg_upper:
         return "INSUFFICIENT_FUNDS"
-    elif "CVV" in message or "CVC" in message:
+    elif "INVALID_CVC" in msg_upper or "CVC" in msg_upper or "CVV" in msg_upper:
         return "INVALID_CVC"
-    elif "EXPIRED" in message:
+    elif "EXPIRED_CARD" in msg_upper or "EXPIRED" in msg_upper:
         return "EXPIRED_CARD"
-    elif "STOLEN" in message or "LOST" in message:
+    elif "STOLEN_CARD" in msg_upper or "STOLEN" in msg_upper:
         return "STOLEN_CARD"
-    elif "APPROVED" in message or "SUCCESS" in message:
+    elif "INCORRECT_ZIP" in msg_upper or "ZIP" in msg_upper:
+        return "INCORRECT_ZIP"
+    elif "APPROVED" in msg_upper or "SUCCESS" in msg_upper:
         return "APPROVED"
-    return message[:50]
+    return str(message)[:50]
 
 # ==========================================
-# STRIPE CHARGE LOGIC (Direct API)
+# ROBUST STRIPE CHECKER LOGIC
 # ==========================================
-async def process_card(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=None):
+async def process_card(cc, mes, ano, cvv, site_url=None, variant_id=None, proxy_str=None):
     gateway = "Stripe Charge"
     total_price = "1.00"
     currency = "USD"
@@ -88,38 +90,53 @@ async def process_card(cc, mes, ano, cvv, site_url, variant_id=None, proxy_str=N
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Origin': 'https://js.stripe.com',
+                'Referer': 'https://js.stripe.com/'
             }
             
+            # Stripe Public Token Request Payload
             payload = {
                 'card[number]': cc,
                 'card[exp_month]': mes,
                 'card[exp_year]': ano,
-                'card[cvc]': cvv
+                'card[cvc]': cvv,
+                'key': 'pk_live_51Hzxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' # Standard Public Key Simulation
             }
             
             stripe_token_url = "https://api.stripe.com/v1/tokens"
             async with session.post(stripe_token_url, data=payload, headers=headers, proxy=proxy, timeout=15) as resp:
                 resp_text = await resp.text()
                 
-                if "id: tok_" in resp_text or "token" in resp_text.lower():
+                try:
+                    res_json = json.loads(resp_text)
+                except:
+                    res_json = {}
+
+                if "id" in res_json and str(res_json["id"]).startswith("tok_"):
                     return True, "APPROVED", gateway, total_price, currency
-                elif "incorrect_cvc" in resp_text or "invalid_cvc" in resp_text:
-                    return True, "INVALID_CVC", gateway, total_price, currency
-                elif "insufficient_funds" in resp_text:
-                    return True, "INSUFFICIENT_FUNDS", gateway, total_price, currency
-                elif "card_declined" in resp_text or "generic_decline" in resp_text:
-                    return True, "CARD_DECLINED", gateway, total_price, currency
-                else:
-                    if "error" in resp_text.lower():
-                        try:
-                            err_json = json.loads(resp_text) if resp_text.startswith("{") else {}
-                            err_msg = err_json.get('error', {}).get('message', 'CARD_DECLINED')
-                        except:
-                            err_msg = "CARD_DECLINED"
-                        return True, err_msg, gateway, total_price, currency
+                
+                if "error" in res_json:
+                    err = res_json["error"]
+                    err_code = err.get('code', '')
+                    err_msg = err.get('message', 'CARD_DECLINED')
                     
-                    return False, "CARD_DECLINED", gateway, total_price, currency
+                    if err_code:
+                        return True, err_code.upper(), gateway, total_price, currency
+                    return True, err_msg, gateway, total_price, currency
+                
+                # Fallback text checking if JSON parse fails or custom response
+                text_lower = resp_text.lower()
+                if "incorrect_cvc" in text_lower:
+                    return True, "INVALID_CVC", gateway, total_price, currency
+                elif "insufficient_funds" in text_lower:
+                    return True, "INSUFFICIENT_FUNDS", gateway, total_price, currency
+                elif "expired_card" in text_lower:
+                    return True, "EXPIRED_CARD", gateway, total_price, currency
+                elif "card_declined" in text_lower or "generic_decline" in text_lower:
+                    return True, "CARD_DECLINED", gateway, total_price, currency
+                
+                return False, "CARD_DECLINED", gateway, total_price, currency
 
     except Exception as e:
         return False, f"Proxy/Network Error: {str(e)}", gateway, total_price, currency

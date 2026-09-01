@@ -42,15 +42,13 @@ def get_main_menu():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(KeyboardButton("🔐 Gen CC"), KeyboardButton("🛡 Check Cards"))
     markup.add(KeyboardButton("📍 Fake Address"), KeyboardButton("ℹ️ IBAN Gen"))
-    markup.add(KeyboardButton("©️ CPF Gen"), KeyboardButton("🔍 Ping"), KeyboardButton("👤 My Info"))
+    markup.add(KeyboardButton("©️ CPF Gen"), KeyboardButton("👤 My Info"))
     return markup
 
 def setup_bot_commands():
+    # Only show basic commands to all, actual /cmd text is restricted
     commands = [
-        BotCommand("start", "🚀 Start Bot Menu"),
-        BotCommand("add", "➕ Add User (/add ID)"),
-        BotCommand("del", "➖ Delete User (/del ID)"),
-        BotCommand("users", "👥 Show Users")
+        BotCommand("start", "🚀 Start Bot Menu")
     ]
     try:
         bot.set_my_commands(commands)
@@ -60,7 +58,7 @@ def setup_bot_commands():
 # --- Centralized Cancel/Route Checker ---
 def check_cancel(message):
     text = message.text
-    menu_buttons = ["🔐 Gen CC", "🛡 Check Cards", "📍 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "🔍 Ping", "👤 My Info"]
+    menu_buttons = ["🔐 Gen CC", "🛡 Check Cards", "📍 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info"]
     if text in menu_buttons or text.startswith('/'):
         handle_menu_buttons(message)
         return True
@@ -98,10 +96,58 @@ def cmd_users(message):
     users_str = "\n".join([f"<code>{u}</code>" for u in AUTHORIZED_USERS])
     bot.reply_to(message, f"👥 <b>Authorized Users:</b>\n\n{users_str}")
 
-@bot.message_handler(commands=['start', 'help', 'cmd'])
+@bot.message_handler(commands=['cmd', 'help'])
+def cmd_admin_menu(message):
+    if message.from_user.id != ADMIN_ID: return # Admin Only
+    text = (
+        "🛠 <b>Admin Commands List</b>\n\n"
+        "➕ /add user_id - Add User\n"
+        "➖ /del user_id - Delete User\n"
+        "👥 /users - Show Users\n\n"
+        "🔐 /gen - CC Generator\n"
+        "🛡 /chk - Card Checker\n"
+        "📍 /fake - Address Generator\n"
+        "ℹ️ /iban - IBAN Generator\n"
+        "©️ /cpf - CPF Generator\n"
+        "👤 /me - My Info"
+    )
+    bot.reply_to(message, text, reply_markup=get_main_menu())
+
+@bot.message_handler(commands=['start'])
 def cmd_start(message):
     if not is_authorized(message.from_user.id): return
     bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။", reply_markup=get_main_menu())
+
+# --- Direct Functions for Info & CPF ---
+def cmd_me(message):
+    user = message.from_user
+    text = (
+        f"🔍 <b>Telegram Account Info</b>\n\n"
+        f"👤 Name: <code>{user.first_name} {user.last_name or ''}</code>\n"
+        f"🆔 User ID: <code>{user.id}</code>\n"
+        f"🌐 Username: <code>@{user.username or 'None'}</code>\n"
+        f"⚙️ Language: <code>{user.language_code or 'N/A'}</code>"
+    )
+    bot.reply_to(message, text, reply_markup=get_main_menu())
+
+def cmd_cpf(message):
+    first_names = ["Anderson", "Carlos", "Lucas", "Mariana", "Gabriel", "Beatriz", "Rafael", "Juliana"]
+    last_names = ["De Souza Rezende", "Silva Santos", "Almeida Costa", "Oliveira Lima", "Pereira Martins"]
+    places = ["Caminho Niemeyer", "Copacabana Palace", "Ipanema Beach", "Paulista Avenue", "Maracanã Stadium"]
+    
+    name = f"{random.choice(first_names)} {random.choice(last_names)}"
+    cpf = f"{random.randint(100,999)}.{random.randint(100,999)}.{random.randint(100,999)}-{random.randint(10,99)}"
+    place = random.choice(places)
+    
+    text = (
+        f"📍 <b>BR 🇧🇷 CPF Generator</b>\n\n"
+        f"𝗡𝗮𝗺𝗲: <code>{name}</code>\n"
+        f"𝗖𝗣𝗙: <code>{cpf}</code>\n"
+        f"𝗗𝗼𝗕: <code>1988-04-10</code>\n"
+        f"𝗣𝗹𝗮𝗰𝗲: <code>{place}</code>\n"
+        f"𝗗𝗲𝗹𝗶𝘃𝗲𝗿𝘆: <code>Segunda ({random.randint(1,28)}/{random.randint(1,12)})</code>"
+    )
+    bot.reply_to(message, text, reply_markup=get_main_menu())
 
 # --- Step Processing Functions ---
 def process_gen(message):
@@ -306,7 +352,7 @@ def process_iban(message):
     )
     bot.reply_to(message, text, reply_markup=get_main_menu())
 
-# --- Routing for Keyboard Buttons ---
+# --- Routing for Keyboard Buttons & Slash Commands ---
 @bot.message_handler(func=lambda message: True)
 def handle_menu_buttons(message):
     if not is_authorized(message.from_user.id): return
@@ -330,9 +376,6 @@ def handle_menu_buttons(message):
         
     elif text in ["©️ CPF Gen", "/cpf"]:
         cmd_cpf(message)
-        
-    elif text in ["🔍 Ping", "/ping"]:
-        cmd_ping(message)
         
     elif text in ["👤 My Info", "/me"]:
         cmd_me(message)

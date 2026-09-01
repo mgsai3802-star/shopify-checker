@@ -206,7 +206,7 @@ def process_mass(chat_id, cards):
         site = get_auto_site()
         msg = bot.send_message(chat_id, f"⏳ <b>Checking:</b> <code>{cc}</code>")
         Thread(target=run_async_task, args=(chat_id, site, cc, msg.message_id)).start()
-        time.sleep(1) # Telegram API Error မတက်စေရန် ၁ စက္ကန့် ခြားပေးခြင်း
+        time.sleep(15) # Shopify မှ IP Block မခံရစေရန် ၁၅ စက္ကန့် ခြားပေးခြင်း
 
 # ==========================================
 # BOT COMMANDS

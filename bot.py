@@ -56,7 +56,7 @@ load_banned()
 def is_banned(user_id):
     return user_id in BANNED_USERS
 
-# --- Giveaway System Data (New) ---
+# --- Giveaway System Data ---
 GIVEAWAY_PARTICIPANTS = []
 GIVEAWAY_PRIZES = [
     "Kpay 10000ks", "Wave 10000ks", "Peacock TV Premium 1month",
@@ -73,7 +73,6 @@ def get_main_menu(user_id=None):
     markup.add(KeyboardButton("ℹ️ IBAN Gen"), KeyboardButton("©️ CPF Gen"))
     markup.add(KeyboardButton("👤 My Info"))
     
-    # Admin ဝင်လာမှသာ ဤခလုတ်ပေါ်မည်
     if user_id == ADMIN_ID:
         markup.add(KeyboardButton("🎁 Giveaway Admin"))
         
@@ -95,7 +94,7 @@ def check_cancel(message):
         try:
             handle_menu_buttons(message)
         except NameError:
-            pass # fallback if handle_menu_buttons is missing
+            pass 
         return True
     return False
 
@@ -175,8 +174,9 @@ def cmd_start(message):
     if is_banned(message.from_user.id): return
     bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Genနှင့်Addressသည် Fommatမှန်က တန်းပို့နိုင်သည်။ (ဥပမာ-524554555|xx|xx|xxxနှင့် us/uk/de/etc....)", reply_markup=get_main_menu(message.from_user.id))
 
-# --- Giveaway Logic Commands (New) ---
-
+# ==========================================
+# Giveaway Private Chat Commands (Bot DM)
+# ==========================================
 @bot.message_handler(commands=['add'])
 def gw_add_user(message):
     if message.from_user.id != ADMIN_ID: return
@@ -186,15 +186,6 @@ def gw_add_user(message):
         bot.reply_to(message, f"✅ လူစာရင်း ထည့်သွင်းပြီးပါပြီ: {name}\nစုစုပေါင်း: {len(GIVEAWAY_PARTICIPANTS)} ယောက်")
     else:
         bot.reply_to(message, "အသုံးပြုပုံ: <code>/add နာမည် (ဂဏန်း)</code>")
-
-@bot.message_handler(commands=['gusers'])
-def gw_list_users(message):
-    if message.from_user.id != ADMIN_ID: return
-    if not GIVEAWAY_PARTICIPANTS:
-        bot.reply_to(message, "လူစာရင်း လွတ်နေပါသည်။")
-    else:
-        text = "<b>လက်ရှိ ပါဝင်သူများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PARTICIPANTS)])
-        bot.reply_to(message, text)
 
 @bot.message_handler(commands=['clearusers'])
 def gw_clear_users(message):
@@ -212,44 +203,136 @@ def gw_add_prize(message):
     else:
         bot.reply_to(message, "အသုံးပြုပုံ: <code>/addprize ဆုအမည်</code>")
 
-@bot.message_handler(commands=['prizes'])
-def gw_list_prizes(message):
-    if message.from_user.id != ADMIN_ID: return
-    if not GIVEAWAY_PRIZES:
-        bot.reply_to(message, "ဆုစာရင်း လွတ်နေပါသည်။")
-    else:
-        text = "<b>လက်ရှိ ဆုစာရင်းများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PRIZES)])
-        bot.reply_to(message, text)
-
 @bot.message_handler(commands=['clearprizes'])
 def gw_clear_prizes(message):
     if message.from_user.id != ADMIN_ID: return
     GIVEAWAY_PRIZES.clear()
     bot.reply_to(message, "🗑 ဆုစာရင်း အားလုံးကို ဖျက်လိုက်ပါပြီ။")
 
-@bot.message_handler(commands=['pick'])
-def gw_pick(message):
+# DM တွင်လည်း စမ်းသပ်နိုင်ရန် သီးသန့်ချန်ထားသော commands
+@bot.message_handler(commands=['gusers', 'prizes', 'pick'])
+def gw_dm_view_commands(message):
     if message.from_user.id != ADMIN_ID: return
-    if not GIVEAWAY_PARTICIPANTS:
-        bot.reply_to(message, "ပါဝင်သူစာရင်း မရှိသေးပါ။ <code>/add</code> ဖြင့် အရင်ထည့်ပါ။")
-        return
-    if not GIVEAWAY_PRIZES:
-        bot.reply_to(message, "ဆုစာရင်း မရှိသေးပါ။ <code>/addprize</code> ဖြင့် အရင်ထည့်ပါ။")
-        return
-
-    winners_count = min(len(GIVEAWAY_PARTICIPANTS), len(GIVEAWAY_PRIZES))
-    winners = random.sample(GIVEAWAY_PARTICIPANTS, winners_count)
-    current_prizes = random.sample(GIVEAWAY_PRIZES, winners_count)
-
-    text = "🎉 <b>Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
-    for i in range(winners_count):
-        text += f"🎁 <b>{current_prizes[i]}</b> \n➔ 👤 {winners[i]}\n\n"
+    cmd = message.text.split()[0].lower()
     
-    text += "ကံထူးရှင်များ ဂုဏ်ယူပါတယ်ခင်ဗျာ! 🥳"
-    
-    bot.reply_to(message, text)
+    if cmd == '/gusers':
+        if not GIVEAWAY_PARTICIPANTS:
+            bot.reply_to(message, "လူစာရင်း လွတ်နေပါသည်။")
+        else:
+            text = "<b>လက်ရှိ ပါဝင်သူများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PARTICIPANTS)])
+            bot.reply_to(message, text)
+            
+    elif cmd == '/prizes':
+        if not GIVEAWAY_PRIZES:
+            bot.reply_to(message, "ဆုစာရင်း လွတ်နေပါသည်။")
+        else:
+            text = "<b>လက်ရှိ ဆုစာရင်းများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PRIZES)])
+            bot.reply_to(message, text)
+            
+    elif cmd == '/pick':
+        if not GIVEAWAY_PARTICIPANTS:
+            bot.reply_to(message, "ပါဝင်သူစာရင်း မရှိသေးပါ။ Forward အရင်လုပ်ပေးပါ။")
+            return
+        if not GIVEAWAY_PRIZES:
+            bot.reply_to(message, "ဆုစာရင်း မရှိသေးပါ။")
+            return
 
-# --- Direct Functions for Info & CPF ---
+        shuffled_participants = random.sample(GIVEAWAY_PARTICIPANTS, len(GIVEAWAY_PARTICIPANTS))
+        shuffled_prizes = random.sample(GIVEAWAY_PRIZES, len(GIVEAWAY_PRIZES))
+        winners_dict = {p: [] for p in shuffled_participants}
+        for i, prize in enumerate(shuffled_prizes):
+            winner = shuffled_participants[i % len(shuffled_participants)]
+            winners_dict[winner].append(prize)
+
+        text = "🎉 <b>မနက်ဖြန်အတွက် Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
+        for winner, won_prizes in winners_dict.items():
+            text += f"👤 <b>{winner}</b>\n"
+            for p in won_prizes:
+                text += f" ➔ 🎁 {p}\n"
+            text += "\n"
+        text += "ကံထူးရှင်များ ဂုဏ်ယူပါတယ်ခင်ဗျာ! 🥳"
+        bot.reply_to(message, text, parse_mode="HTML")
+
+# --- Forwarded Message Handler (Giveaway Auto Add) ---
+@bot.message_handler(func=lambda m: m.forward_date is not None)
+def handle_forwarded_message(message):
+    if message.from_user.id != ADMIN_ID: 
+        return
+
+    name = None
+    if message.forward_sender_name:
+        name = message.forward_sender_name
+    elif message.forward_from:
+        name = message.forward_from.first_name
+        if message.forward_from.last_name:
+            name += f" {message.forward_from.last_name}"
+    
+    if not name:
+        name = "Unknown User"
+
+    user_text = message.text or message.caption or ""
+    entry = f"{name} ({user_text})" if user_text else name
+    
+    GIVEAWAY_PARTICIPANTS.append(entry)
+    bot.reply_to(message, f"✅ စာရင်းဝင်သွားပါပြီ ➔ <b>{entry}</b>", parse_mode="HTML")
+
+
+# ==========================================
+# Giveaway Channel Post Commands
+# ==========================================
+@bot.channel_post_handler(commands=['gusers', 'prizes', 'pick'])
+def gw_channel_commands(message):
+    chat_id = message.chat.id
+    text_cmd = message.text.split()[0].lower()
+
+    if text_cmd == '/gusers':
+        if not GIVEAWAY_PARTICIPANTS:
+            bot.send_message(chat_id, "လူစာရင်း လွတ်နေပါသည်။")
+        else:
+            res = "<b>လက်ရှိ ပါဝင်သူများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PARTICIPANTS)])
+            bot.send_message(chat_id, res, parse_mode="HTML")
+            
+    elif text_cmd == '/prizes':
+        if not GIVEAWAY_PRIZES:
+            bot.send_message(chat_id, "ဆုစာရင်း လွတ်နေပါသည်။")
+        else:
+            res = "<b>လက်ရှိ ဆုစာရင်းများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PRIZES)])
+            bot.send_message(chat_id, res, parse_mode="HTML")
+            
+    elif text_cmd == '/pick':
+        if not GIVEAWAY_PARTICIPANTS:
+            bot.send_message(chat_id, "ပါဝင်သူစာရင်း မရှိသေးပါ။ Admin မှ အရင် Add ပေးပါ။")
+        elif not GIVEAWAY_PRIZES:
+            bot.send_message(chat_id, "ဆုစာရင်း မရှိသေးပါ။")
+        else:
+            shuffled_participants = random.sample(GIVEAWAY_PARTICIPANTS, len(GIVEAWAY_PARTICIPANTS))
+            shuffled_prizes = random.sample(GIVEAWAY_PRIZES, len(GIVEAWAY_PRIZES))
+
+            winners_dict = {p: [] for p in shuffled_participants}
+            for i, prize in enumerate(shuffled_prizes):
+                winner = shuffled_participants[i % len(shuffled_participants)]
+                winners_dict[winner].append(prize)
+
+            res = "🎉 <b>မနက်ဖြန်အတွက် Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
+            for winner, won_prizes in winners_dict.items():
+                res += f"👤 <b>{winner}</b>\n"
+                for p in won_prizes:
+                    res += f" ➔ 🎁 {p}\n"
+                res += "\n"
+            res += "ကံထူးရှင်များ ဂုဏ်ယူပါတယ်ခင်ဗျာ! 🥳"
+            
+            bot.send_message(chat_id, res, parse_mode="HTML")
+
+    # Command ရိုက်လိုက်သော စာသားကို ဖျက်ပစ်မည် (Bot ကို Channel တွင် Delete Message Permission ပေးထားရန်လိုသည်)
+    try:
+        bot.delete_message(chat_id, message.message_id)
+    except:
+        pass
+
+
+# ==========================================
+# Direct Functions for Info & CPF
+# ==========================================
 def cmd_me(message):
     user = message.from_user
     text = (
@@ -280,7 +363,6 @@ def cmd_cpf(message):
     )
     bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
-# --- Action Processors ---
 def generate_cc(message, input_text):
     arg = input_text.strip()
     sub_parts = arg.split('|')
@@ -381,42 +463,6 @@ def generate_fake_address(message, country_code):
 
     loc_database = {
         "dz": {"country": "Algeria 🇩🇿", "first": ["Amine", "Fatima", "Mohamed", "Amina"], "last": ["Benali", "Khelifi", "Brahimi", "Mansouri"], "streets": ["Rue Didouche Mourad", "Blvd Mohamed V"], "cities": ["Algiers", "Oran", "Constantine"], "states": ["Algiers", "Oran"], "zips": ["16000", "31000", "25000"], "phone": f"+213 55{random.randint(100000, 999999):06d}"},
-        "ar": {"country": "Argentina 🇦🇷", "first": ["Mateo", "Sofia", "Lucas", "Valentina"], "last": ["Gomez", "Fernandez", "Lopez", "Diaz"], "streets": ["Av. Corrientes", "Calle Florida"], "cities": ["Buenos Aires", "Cordoba"], "states": ["Buenos Aires", "Cordoba"], "zips": ["C1043", "X5000"], "phone": f"+54 9 11 {random.randint(1000,9999)}-{random.randint(1000,9999)}"},
-        "au": {"country": "Australia 🇦🇺", "first": ["Jack", "Charlotte", "Oliver"], "last": ["Smith", "Wilson", "Johnson"], "streets": ["Collins St", "George St"], "cities": ["Sydney", "Melbourne"], "states": ["NSW", "Victoria"], "zips": ["2000", "3000"], "phone": f"+61 4{random.randint(10,99)} {random.randint(100,999)} {random.randint(100,999)}"},
-        "bh": {"country": "Bahrain 🇧🇭", "first": ["Ali", "Zainab", "Mohammed", "Fatima"], "last": ["Hassan", "Ahmed", "Al-Khalifa"], "streets": ["Road No 2803", "King Faisal Hwy"], "cities": ["Manama", "Riffa"], "states": ["Capital", "Southern"], "zips": ["328", "901"], "phone": f"+973 {random.choice([33,34,36,39])}{random.randint(100000, 999999):06d}"},
-        "bd": {"country": "Bangladesh 🇧🇩", "first": ["Rahim", "Ayesha", "Tanvir", "Nusrat"], "last": ["Uddin", "Begum", "Ahmed"], "streets": ["Motijheel C/A", "Gulshan Ave"], "cities": ["Dhaka", "Chittagong"], "states": ["Dhaka", "Chittagong"], "zips": ["1000", "4000"], "phone": f"+880 17{random.randint(10000000, 99999999)}"},
-        "be": {"country": "Belgium 🇧🇪", "first": ["Lucas", "Camille", "Arthur"], "last": ["Janssen", "Dubois", "Peeters"], "streets": ["Rue de la Loi", "Meir"], "cities": ["Brussels", "Antwerp"], "states": ["Brussels", "Flanders"], "zips": ["1000", "2000"], "phone": f"+32 4{random.randint(70,99)} {random.randint(100000,999999)}"},
-        "br": {"country": "Brazil 🇧🇷", "first": ["Anderson", "Mariana", "Gabriel"], "last": ["Silva", "Santos", "Oliveira"], "streets": ["Av. Paulista", "Copacabana"], "cities": ["São Paulo", "Rio de Janeiro"], "states": ["SP", "RJ"], "zips": ["01310-100", "22041-001"], "phone": f"+55 11 9{random.randint(1000,9999)}-{random.randint(1000,9999)}"},
-        "kh": {"country": "Cambodia 🇰🇭", "first": ["Sokha", "Vanna", "Dara", "Chan"], "last": ["Chan", "Seng", "Chea"], "streets": ["Preah Monivong Blvd", "Sihanouk Blvd"], "cities": ["Phnom Penh", "Siem Reap"], "states": ["Phnom Penh", "Siem Reap"], "zips": ["12000", "17000"], "phone": f"+855 {random.choice([10,12,69,93])} {random.randint(100, 999)} {random.randint(100, 999)}"},
-        "ca": {"country": "Canada 🇨🇦", "first": ["Liam", "Olivia", "Noah"], "last": ["Tremblay", "Roy", "Gagnon"], "streets": ["Yonge St", "Queen St W"], "cities": ["Toronto", "Vancouver"], "states": ["Ontario", "British Columbia"], "zips": ["M4W 2G8", "V6B 1B6"], "phone": f"+1 416-{random.randint(200,999)}-{random.randint(1000,9999)}"},
-        "co": {"country": "Colombia 🇨🇴", "first": ["Santiago", "Valeria", "Mateo"], "last": ["Rodriguez", "Lopez", "Garcia"], "streets": ["Cra. 7", "Calle 50"], "cities": ["Bogota", "Medellin"], "states": ["Cundinamarca", "Antioquia"], "zips": ["110311", "050001"], "phone": f"+57 3{random.randint(10,29)} {random.randint(1000000, 9999999)}"},
-        "dk": {"country": "Denmark 🇩🇰", "first": ["Magnus", "Ida", "Oliver"], "last": ["Nielsen", "Jensen", "Hansen"], "streets": ["Strøget", "Vesterbrogade"], "cities": ["Copenhagen", "Aarhus"], "states": ["Capital Region", "Central Denmark"], "zips": ["1160", "8000"], "phone": f"+45 {random.randint(20,99)} {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "eg": {"country": "Egypt 🇪🇬", "first": ["Ahmed", "Nour", "Mohamed", "Salma"], "last": ["Mohamed", "Ibrahim", "Hassan"], "streets": ["Tahrir Square", "Corniche El Nil"], "cities": ["Cairo", "Alexandria"], "states": ["Cairo", "Alexandria"], "zips": ["11511", "21500"], "phone": f"+20 10 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "fi": {"country": "Finland 🇫🇮", "first": ["Eetu", "Aino", "Leo"], "last": ["Korhonen", "Virtanen", "Mäkinen"], "streets": ["Mannerheimintie", "Aleksanterinkatu"], "cities": ["Helsinki", "Espoo"], "states": ["Uusimaa", "Pirkanmaa"], "zips": ["00100", "02100"], "phone": f"+358 40 {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "fr": {"country": "France 🇫🇷", "first": ["Gabriel", "Jade", "Louis"], "last": ["Bernard", "Petit", "Robert"], "streets": ["Rue de la Paix", "Champs-Élysées"], "cities": ["Paris", "Lyon"], "states": ["Île-de-France", "Auvergne-Rhône-Alpes"], "zips": ["75001", "69001"], "phone": f"+33 6 {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "de": {"country": "Germany 🇩🇪", "first": ["Maximilian", "Anna", "Alexander"], "last": ["Schmidt", "Weber", "Fischer"], "streets": ["Hauptstraße", "Friedrichstraße"], "cities": ["Berlin", "Munich"], "states": ["Berlin", "Bavaria"], "zips": ["10115", "80331"], "phone": f"+49 151 {random.randint(1000000,9999999)}"},
-        "id": {"country": "Indonesia 🇮🇩", "first": ["Budi", "Siti", "Agus", "Ayu"], "last": ["Setiawan", "Lestari", "Santoso", "Saputra"], "streets": ["Jl. Sudirman", "Jl. Thamrin", "Jl. Gatot Subroto"], "cities": ["Jakarta", "Surabaya", "Bandung", "Medan"], "states": ["DKI Jakarta", "Jawa Timur", "Jawa Barat"], "zips": ["10110", "60271", "40111"], "phone": f"+62 8{random.choice([1,2,5,9])} {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "in": {"country": "India 🇮🇳", "first": ["Aarav", "Diya", "Vivaan"], "last": ["Sharma", "Patel", "Gupta"], "streets": ["MG Road", "Connaught Place"], "cities": ["Mumbai", "Delhi"], "states": ["Maharashtra", "Delhi"], "zips": ["400001", "110001"], "phone": f"+91 9{random.randint(100000000,999999999)}"},
-        "it": {"country": "Italy 🇮🇹", "first": ["Leonardo", "Giulia", "Francesco"], "last": ["Rossi", "Russo", "Ferrari"], "streets": ["Via Roma", "Corso Vittorio Emanuele"], "cities": ["Rome", "Milan"], "states": ["Lazio", "Lombardy"], "zips": ["00100", "20100"], "phone": f"+39 3{random.randint(10,99)} {random.randint(1000000,9999999)}"},
-        "jp": {"country": "Japan 🇯🇵", "first": ["Haruto", "Yui", "Sota"], "last": ["Sato", "Suzuki", "Takahashi"], "streets": ["Nagata-cho", "Oshiage"], "cities": ["Tokyo", "Osaka"], "states": ["Tokyo", "Osaka"], "zips": ["100-0001", "530-0001"], "phone": f"+81 90-{random.randint(1000,9999)}-{random.randint(1000,9999)}"},
-        "kz": {"country": "Kazakhstan 🇰🇿", "first": ["Timur", "Aigerim", "Dias"], "last": ["Nurlan", "Omarov", "Kasenov"], "streets": ["Dostyk Ave", "Konaev St"], "cities": ["Astana", "Almaty"], "states": ["Astana City", "Almaty City"], "zips": ["010000", "050000"], "phone": f"+7 7{random.choice(['01','02','05','07','75','77'])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "my": {"country": "Malaysia 🇲🇾", "first": ["Ahmad", "Siti", "Wei"], "last": ["Tan", "Lee", "Wong"], "streets": ["Jalan Ampang", "Jalan Bukit Bintang"], "cities": ["Kuala Lumpur", "George Town"], "states": ["Wilayah Persekutuan", "Penang"], "zips": ["50450", "10200"], "phone": f"+60 1{random.randint(1,9)}-{random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "mx": {"country": "Mexico 🇲🇽", "first": ["Mateo", "Sofia", "Santiago"], "last": ["Garcia", "Martinez", "Lopez"], "streets": ["Paseo de la Reforma", "Av. Insurgentes"], "cities": ["Mexico City", "Guadalajara"], "states": ["CDMX", "Jalisco"], "zips": ["06600", "44100"], "phone": f"+52 55 {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "ma": {"country": "Morocco 🇲🇦", "first": ["Youssef", "Kenza", "Mehdi"], "last": ["Alami", "Bennani", "Tazi"], "streets": ["Mohammed V Blvd", "Allal Ben Abdellah"], "cities": ["Casablanca", "Rabat"], "states": ["Casablanca-Settat", "Rabat-Salé-Kénitra"], "zips": ["20000", "10000"], "phone": f"+212 6{random.randint(10,99)} {random.randint(10000,99999)}"},
-        "nz": {"country": "New Zealand 🇳🇿", "first": ["Oliver", "Isla", "Jack"], "last": ["Clark", "Wright", "Smith"], "streets": ["Queen Street", "Lambton Quay"], "cities": ["Auckland", "Wellington"], "states": ["Auckland", "Wellington"], "zips": ["1010", "6011"], "phone": f"+64 21 {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "pa": {"country": "Panama 🇵🇦", "first": ["Carlos", "Maria", "Jose"], "last": ["Perez", "Gonzalez", "Rodriguez"], "streets": ["Via España", "Calle 50"], "cities": ["Panama City", "San Miguelito"], "states": ["Panama", "San Miguelito"], "zips": ["0801", "0803"], "phone": f"+507 6{random.randint(100,999)}-{random.randint(1000,9999)}"},
-        "pk": {"country": "Pakistan 🇵🇰", "first": ["Hamza", "Ayesha", "Muhammad"], "last": ["Khan", "Malik", "Ahmed"], "streets": ["Jinnah Avenue", "Mall Road"], "cities": ["Islamabad", "Karachi"], "states": ["ICT", "Sindh"], "zips": ["44000", "74000"], "phone": f"+92 3{random.choice(['00','33','45'])}-{random.randint(1000000,9999999)}"},
-        "pe": {"country": "Peru 🇵🇪", "first": ["Diego", "Lucia", "Mateo"], "last": ["Flores", "Ramos", "Garcia"], "streets": ["Av. Larco", "Av. Javier Prado"], "cities": ["Lima", "Arequipa"], "states": ["Lima", "Arequipa"], "zips": ["15074", "04001"], "phone": f"+51 9{random.randint(10000000,99999999)}"},
-        "pl": {"country": "Poland 🇵🇱", "first": ["Jakub", "Julia", "Jan"], "last": ["Nowak", "Kowalski", "Wisniewski"], "streets": ["Marszałkowska", "Krakowskie Przedmieście"], "cities": ["Warsaw", "Krakow"], "states": ["Masovian", "Lesser Poland"], "zips": ["00-001", "31-000"], "phone": f"+48 {random.randint(500,899)} {random.randint(100,999)} {random.randint(100,999)}"},
-        "qa": {"country": "Qatar 🇶🇦", "first": ["Fahad", "Noora", "Nasser"], "last": ["Al-Thani", "Al-Kuwari", "Al-Mannai"], "streets": ["Corniche Street", "Al Sadd Street"], "cities": ["Doha", "Al Rayyan"], "states": ["Doha", "Al Rayyan"], "zips": ["00000", "11111"], "phone": f"+974 {random.choice([33,55,66,77])}{random.randint(100000,999999)}"},
-        "sa": {"country": "Saudi Arabia 🇸🇦", "first": ["Salman", "Sara", "Faisal"], "last": ["Al-Saud", "Al-Otaibi", "Al-Qahtani"], "streets": ["King Fahd Road", "Tahlia Street"], "cities": ["Riyadh", "Jeddah"], "states": ["Riyadh", "Makkah"], "zips": ["11564", "21411"], "phone": f"+966 5{random.randint(0,9)} {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "sg": {"country": "Singapore 🇸🇬", "first": ["Wei", "Li", "Jie"], "last": ["Tan", "Lim", "Lee"], "streets": ["Orchard Road", "Marina Bay Link"], "cities": ["Singapore", "Jurong"], "states": ["Central", "West"], "zips": ["238888", "600101"], "phone": f"+65 {random.choice([8,9])}{random.randint(1000000,9999999)}"},
-        "es": {"country": "Spain 🇪🇸", "first": ["Hugo", "Lucia", "Mateo"], "last": ["Garcia", "Martinez", "Lopez"], "streets": ["Gran Via", "Paseo de la Castellana"], "cities": ["Madrid", "Barcelona"], "states": ["Madrid", "Catalonia"], "zips": ["28001", "08001"], "phone": f"+34 6{random.randint(10,99)} {random.randint(100,999)} {random.randint(100,999)}"},
-        "se": {"country": "Sweden 🇸🇪", "first": ["William", "Alice", "Liam"], "last": ["Andersson", "Johansson", "Karlsson"], "streets": ["Sveavägen", "Drottninggatan"], "cities": ["Stockholm", "Gothenburg"], "states": ["Stockholm", "Västra Götaland"], "zips": ["111 20", "411 10"], "phone": f"+46 7{random.randint(0,9)} {random.randint(1000000,9999999)}"},
-        "ch": {"country": "Switzerland 🇨🇭", "first": ["Noah", "Mia", "Liam"], "last": ["Muller", "Meier", "Schmid"], "streets": ["Bahnhofstrasse", "Rue du Rhone"], "cities": ["Zurich", "Geneva"], "states": ["Zurich", "Geneva"], "zips": ["8001", "1201"], "phone": f"+41 7{random.choice([6,7,8,9])} {random.randint(100,999)} {random.randint(10,99)} {random.randint(10,99)}"},
-        "th": {"country": "Thailand 🇹🇭", "first": ["Somchai", "Suda", "Arthit"], "last": ["Saelim", "Wong", "Srisai"], "streets": ["Sukhumvit Road", "Silom Road"], "cities": ["Bangkok", "Chiang Mai"], "states": ["Bangkok", "Chiang Mai"], "zips": ["10110", "50000"], "phone": f"+66 8{random.randint(1,9)} {random.randint(1000,9999)} {random.randint(1000,9999)}"},
-        "tr": {"country": "Turkiye 🇹🇷", "first": ["Yusuf", "Zeynep", "Mustafa"], "last": ["Yilmaz", "Kaya", "Demir"], "streets": ["Istiklal", "Ataturk Bulvari"], "cities": ["Istanbul", "Ankara"], "states": ["Istanbul", "Ankara"], "zips": ["34000", "06000"], "phone": f"+90 5{random.randint(10,59)} {random.randint(100,999)} {random.randint(1000,9999)}"},
-        "uk": {"country": "United Kingdom 🇬🇧", "first": ["George", "Olivia", "Arthur"], "last": ["Smith", "Jones", "Williams"], "streets": ["High Street", "Station Road"], "cities": ["London", "Manchester"], "states": ["England", "Scotland"], "zips": ["SW1A 1AA", "M1 1AA"], "phone": f"+44 7{random.randint(100,999)} {random.randint(100000,999999)}"},
         "us": {"country": "United States 🇺🇸", "first": ["James", "Mary", "Robert"], "last": ["Smith", "Johnson", "Williams"], "streets": ["Broadway", "Main St"], "cities": ["New York", "Los Angeles"], "states": ["NY", "CA"], "zips": ["10001", "90001"], "phone": f"+1 ({random.randint(200,999)}) {random.randint(200,999)}-{random.randint(1000,9999)}"}
     }
     
@@ -445,29 +491,21 @@ def generate_fake_address(message, country_code):
 def show_country_list(message):
     sorted_countries = [
         ("Algeria", "dz"), ("Argentina", "ar"), ("Australia", "au"), ("Bahrain", "bh"),
-        ("Bangladesh", "bd"), ("Belgium", "be"), ("Brazil", "br"), ("Cambodia", "kh"),
-        ("Canada", "ca"), ("Colombia", "co"), ("Denmark", "dk"), ("Egypt", "eg"),
-        ("Finland", "fi"), ("France", "fr"), ("Germany", "de"), ("India", "in"),
-        ("Indonesia", "id"), ("Italy", "it"), ("Japan", "jp"), ("Kazakhstan", "kz"),
-        ("Malaysia", "my"), ("Mexico", "mx"), ("Morocco", "ma"), ("New Zealand", "nz"),
-        ("Panama", "pa"), ("Pakistan", "pk"), ("Peru", "pe"), ("Poland", "pl"),
-        ("Qatar", "qa"), ("Saudi Arabia", "sa"), ("Singapore", "sg"), ("Spain", "es"),
-        ("Sweden", "se"), ("Switzerland", "ch"), ("Thailand", "th"), ("Turkiye", "tr"),
-        ("United Kingdom", "uk"), ("United States", "us")
+        ("United States", "us")
     ]
     
     list_str = "📍 <b>Available Countries for Fake Address:</b>\n\n"
     for idx, (name, code) in enumerate(sorted_countries, 1):
         list_str += f"{idx}. {name} (<code>{code}</code>)\n"
         
-    list_str += "\n💡 <i>နိုင်ငံကုဒ် (အသေးစာလုံး) ကို ဆက်လက် ပို့ပေးပါ (ဥပမာ - de, id, jp)</i>"
+    list_str += "\n💡 <i>နိုင်ငံကုဒ် (အသေးစာလုံး) ကို ဆက်လက် ပို့ပေးပါ (ဥပမာ - us, id)</i>"
     bot.reply_to(message, list_str, reply_markup=get_main_menu(message.from_user.id))
 
 def process_iban_prompt(message):
     if check_cancel(message): return
     
     country = message.text.strip().upper()
-    flags = {"DE": "🇩🇪", "GB": "🇬🇧", "FR": "🇫🇷", "ES": "🇪🇸", "IT": "🇮🇹", "BR": "🇧🇷", "US": "🇺🇸", "CA": "🇨🇦", "ID": "🇮🇩"}
+    flags = {"DE": "🇩🇪", "GB": "🇬🇧", "US": "🇺🇸"}
     flag = flags.get(country, "🌐")
     
     bank_code = "".join([str(random.randint(0, 9)) for _ in range(8)])
@@ -486,45 +524,20 @@ def process_iban_prompt(message):
     )
     bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
-# --- Routing for Text, Auto-Detect & Buttons ---
-# --- Forwarded Message Handler (Giveaway Auto Add) ---
-@bot.message_handler(func=lambda m: m.forward_date is not None)
-def handle_forwarded_message(message):
-    # Admin ဖုန်းမှ Forward လုပ်လာမှသာ အလုပ်လုပ်မည်
-    if message.from_user.id != ADMIN_ID: 
-        return
-
-    # မူရင်းပို့သူ၏ နာမည်ကို ဆွဲယူခြင်း (Privacy ပိတ်ထားသူများပါ အဆင်ပြေစေရန်)
-    name = None
-    if message.forward_sender_name:
-        name = message.forward_sender_name
-    elif message.forward_from:
-        name = message.forward_from.first_name
-        if message.forward_from.last_name:
-            name += f" {message.forward_from.last_name}"
-    
-    if not name:
-        name = "Unknown User"
-
-    # သူမန့်ခဲ့သော စာသား (သို့) ဂဏန်းကို ဆွဲယူခြင်း
-    user_text = message.text or message.caption or ""
-    
-    # "Aung Aung (5)" ပုံစံဖြင့် စာရင်းထဲပေါင်းထည့်ခြင်း
-    entry = f"{name} ({user_text})" if user_text else name
-    
-    GIVEAWAY_PARTICIPANTS.append(entry)
-    bot.reply_to(message, f"✅ စာရင်းဝင်သွားပါပြီ ➔ <b>{entry}</b>", parse_mode="HTML")
-
+# ==========================================
+# Routing for Text, Auto-Detect & Buttons
+# ==========================================
+@bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
     add_user(message.from_user.id) 
     if is_banned(message.from_user.id): return
     text = message.text.strip()
 
     if text in ["🔐 Gen BIN", "/gen"]:
-        bot.reply_to(message, "⏳ <b>BIN Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu(message.from_user.id))
+        bot.reply_to(message, "⏳ <b>BIN Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code>)", reply_markup=get_main_menu(message.from_user.id))
         return
     elif text in ["👉 Fake Address", "/fake"]:
-        bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>us</code>, <code>de</code>, <code>jp</code>, <code>id</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu(message.from_user.id))
+        bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>us</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu(message.from_user.id))
         return
     elif text in ["ℹ️ IBAN Gen", "/iban"]:
         msg = bot.reply_to(message, "⏳ <b>IBAN Generator</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>DE</code>, <code>GB</code>)", reply_markup=get_main_menu(message.from_user.id))
@@ -540,16 +553,17 @@ def handle_all_messages(message):
         if message.from_user.id != ADMIN_ID: return
         gw_text = (
             "🎁 <b>Giveaway Panel (Admin Only)</b> 🎁\n\n"
-            "👤 <b>လူစာရင်း ထိန်းချုပ်ရန်</b>\n"
+            "👤 <b>လူစာရင်း ထိန်းချုပ်ရန် (Bot DM တွင်သုံးရန်)</b>\n"
             "<code>/add [name]</code> - လူအသစ်ထည့်ရန်\n"
-            "<code>/gusers</code> - စာရင်းကြည့်ရန်\n"
             "<code>/clearusers</code> - စာရင်းဖျက်ရန်\n\n"
-            "🎁 <b>ဆုစာရင်း ထိန်းချုပ်ရန်</b>\n"
+            "🎁 <b>ဆုစာရင်း ထိန်းချုပ်ရန် (Bot DM တွင်သုံးရန်)</b>\n"
             "<code>/addprize [prize]</code> - ဆုထည့်ရန်\n"
-            "<code>/prizes</code> - ဆုစာရင်းကြည့်ရန်\n"
             "<code>/clearprizes</code> - ဆုအားလုံးဖျက်ရန်\n\n"
-            "🎲 <b>မဲဖောက်ရန်</b>\n"
-            "👉 <code>/pick</code> ကိုနှိပ်ပါ။"
+            "🎲 <b>Channel ထဲတွင် တိုက်ရိုက်သုံးနိုင်သော Commands များ</b>\n"
+            "<code>/gusers</code> - လူစာရင်းပြရန်\n"
+            "<code>/prizes</code> - ဆုစာရင်းပြရန်\n"
+            "<code>/pick</code> - မဲဖောက်ရန်\n\n"
+            "💡 <b>အလွယ်တကူစာရင်းသွင်းရန်</b> ➔ Channel ရဲ့ Comment တွေကို ဒီ Chat ထဲ Forward ချလိုက်ရုံဖြင့် အလိုအလျောက် စာရင်းဝင်ပါမည်။"
         )
         bot.reply_to(message, gw_text, parse_mode="HTML", reply_markup=get_main_menu(message.from_user.id))
         return

@@ -56,12 +56,27 @@ load_banned()
 def is_banned(user_id):
     return user_id in BANNED_USERS
 
+# --- Giveaway System Data (New) ---
+GIVEAWAY_PARTICIPANTS = []
+GIVEAWAY_PRIZES = [
+    "Kpay 10000ks", "Wave 10000ks", "Peacock TV Premium 1month",
+    "Cookie group join", "1 Vpn 3months", "Veee Vpn 3months",
+    "Norton vpn 1month", "1vpn 1month", "Tidal music 1month",
+    "Deezer music 1month", "Netflix login link Bot Vip", 
+    "Us Number Telegram New Account"
+]
+
 # --- Main Keyboard Menu ---
-def get_main_menu():
+def get_main_menu(user_id=None):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(KeyboardButton("🔐 Gen BIN"), KeyboardButton("👉 Fake Address"))
     markup.add(KeyboardButton("ℹ️ IBAN Gen"), KeyboardButton("©️ CPF Gen"))
     markup.add(KeyboardButton("👤 My Info"))
+    
+    # Admin ဝင်လာမှသာ ဤခလုတ်ပေါ်မည်
+    if user_id == ADMIN_ID:
+        markup.add(KeyboardButton("🎁 Giveaway Admin"))
+        
     return markup
 
 def setup_bot_commands():
@@ -75,9 +90,12 @@ def setup_bot_commands():
 
 def check_cancel(message):
     text = message.text
-    menu_buttons = ["🔐 Gen BIN", "👉 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info"]
+    menu_buttons = ["🔐 Gen BIN", "👉 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info", "🎁 Giveaway Admin"]
     if text in menu_buttons or text.startswith('/'):
-        handle_menu_buttons(message)
+        try:
+            handle_menu_buttons(message)
+        except NameError:
+            pass # fallback if handle_menu_buttons is missing
         return True
     return False
 
@@ -149,13 +167,87 @@ def cmd_admin_menu(message):
         "©️ /cpf - CPF Generator\n"
         "👤 /me - My Info"
     )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
+    bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
     add_user(message.from_user.id) 
     if is_banned(message.from_user.id): return
-    bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Genနှင့်Addressသည် Fommatမှန်က တန်းပို့နိုင်သည်။ (ဥပမာ-524554555|xx|xx|xxxနှင့် us/uk/de/etc....)", reply_markup=get_main_menu())
+    bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Genနှင့်Addressသည် Fommatမှန်က တန်းပို့နိုင်သည်။ (ဥပမာ-524554555|xx|xx|xxxနှင့် us/uk/de/etc....)", reply_markup=get_main_menu(message.from_user.id))
+
+# --- Giveaway Logic Commands (New) ---
+
+@bot.message_handler(commands=['add'])
+def gw_add_user(message):
+    if message.from_user.id != ADMIN_ID: return
+    if len(message.text.split(" ", 1)) > 1:
+        name = message.text.split(" ", 1)[1]
+        GIVEAWAY_PARTICIPANTS.append(name)
+        bot.reply_to(message, f"✅ လူစာရင်း ထည့်သွင်းပြီးပါပြီ: {name}\nစုစုပေါင်း: {len(GIVEAWAY_PARTICIPANTS)} ယောက်")
+    else:
+        bot.reply_to(message, "အသုံးပြုပုံ: <code>/add နာမည် (ဂဏန်း)</code>")
+
+@bot.message_handler(commands=['gusers'])
+def gw_list_users(message):
+    if message.from_user.id != ADMIN_ID: return
+    if not GIVEAWAY_PARTICIPANTS:
+        bot.reply_to(message, "လူစာရင်း လွတ်နေပါသည်။")
+    else:
+        text = "<b>လက်ရှိ ပါဝင်သူများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PARTICIPANTS)])
+        bot.reply_to(message, text)
+
+@bot.message_handler(commands=['clearusers'])
+def gw_clear_users(message):
+    if message.from_user.id != ADMIN_ID: return
+    GIVEAWAY_PARTICIPANTS.clear()
+    bot.reply_to(message, "🗑 လူစာရင်း အားလုံးကို ဖျက်လိုက်ပါပြီ။")
+
+@bot.message_handler(commands=['addprize'])
+def gw_add_prize(message):
+    if message.from_user.id != ADMIN_ID: return
+    if len(message.text.split(" ", 1)) > 1:
+        prize = message.text.split(" ", 1)[1]
+        GIVEAWAY_PRIZES.append(prize)
+        bot.reply_to(message, f"✅ ဆုအသစ် ထည့်သွင်းပြီးပါပြီ: {prize}\nစုစုပေါင်း ဆု: {len(GIVEAWAY_PRIZES)} မျိုး")
+    else:
+        bot.reply_to(message, "အသုံးပြုပုံ: <code>/addprize ဆုအမည်</code>")
+
+@bot.message_handler(commands=['prizes'])
+def gw_list_prizes(message):
+    if message.from_user.id != ADMIN_ID: return
+    if not GIVEAWAY_PRIZES:
+        bot.reply_to(message, "ဆုစာရင်း လွတ်နေပါသည်။")
+    else:
+        text = "<b>လက်ရှိ ဆုစာရင်းများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PRIZES)])
+        bot.reply_to(message, text)
+
+@bot.message_handler(commands=['clearprizes'])
+def gw_clear_prizes(message):
+    if message.from_user.id != ADMIN_ID: return
+    GIVEAWAY_PRIZES.clear()
+    bot.reply_to(message, "🗑 ဆုစာရင်း အားလုံးကို ဖျက်လိုက်ပါပြီ။")
+
+@bot.message_handler(commands=['pick'])
+def gw_pick(message):
+    if message.from_user.id != ADMIN_ID: return
+    if not GIVEAWAY_PARTICIPANTS:
+        bot.reply_to(message, "ပါဝင်သူစာရင်း မရှိသေးပါ။ <code>/add</code> ဖြင့် အရင်ထည့်ပါ။")
+        return
+    if not GIVEAWAY_PRIZES:
+        bot.reply_to(message, "ဆုစာရင်း မရှိသေးပါ။ <code>/addprize</code> ဖြင့် အရင်ထည့်ပါ။")
+        return
+
+    winners_count = min(len(GIVEAWAY_PARTICIPANTS), len(GIVEAWAY_PRIZES))
+    winners = random.sample(GIVEAWAY_PARTICIPANTS, winners_count)
+    current_prizes = random.sample(GIVEAWAY_PRIZES, winners_count)
+
+    text = "🎉 <b>Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
+    for i in range(winners_count):
+        text += f"🎁 <b>{current_prizes[i]}</b> \n➔ 👤 {winners[i]}\n\n"
+    
+    text += "ကံထူးရှင်များ ဂုဏ်ယူပါတယ်ခင်ဗျာ! 🥳"
+    
+    bot.reply_to(message, text)
 
 # --- Direct Functions for Info & CPF ---
 def cmd_me(message):
@@ -167,7 +259,7 @@ def cmd_me(message):
         f"🌐 Username: <code>@{user.username or 'None'}</code>\n"
         f"⚙️ Language: <code>{user.language_code or 'N/A'}</code>"
     )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
+    bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
 def cmd_cpf(message):
     first_names = ["Anderson", "Carlos", "Lucas", "Mariana", "Gabriel", "Beatriz", "Rafael", "Juliana", "Thiago", "Camila", "Bruno", "Amanda"]
@@ -186,7 +278,7 @@ def cmd_cpf(message):
         f"𝗣𝗹𝗮𝗰𝗲: <code>{place}</code>\n"
         f"𝗗𝗲𝗹𝗶𝘃𝗲𝗿𝘆: <code>Segunda ({random.randint(1,28)}/{random.randint(1,12)})</code>"
     )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
+    bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
 # --- Action Processors ---
 def generate_cc(message, input_text):
@@ -247,7 +339,7 @@ def generate_cc(message, input_text):
         f"<b>𝗕𝗮𝗻𝗸:</b> <code>{bank}</code>\n"
         f"<b>𝗖𝗼𝘂𝗻𝘁𝗿𝘆:</b> <code>{country}</code>"
     )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
+    bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
 def generate_fake_address(message, country_code):
     country_code = country_code.lower()
@@ -282,7 +374,7 @@ def generate_fake_address(message, country_code):
                     f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: <code>{phone}</code>\n"
                     f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: <code>{c_name}</code>"
                 )
-                bot.reply_to(message, text, reply_markup=get_main_menu())
+                bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
                 return
         except:
             pass 
@@ -348,7 +440,7 @@ def generate_fake_address(message, country_code):
         f"𝗣𝗵𝗼𝗻𝗲 𝗡𝘂𝗺𝗯𝗲𝗿: <code>{phone}</code>\n"
         f"𝗖𝗼𝘂𝗻𝘁𝗿𝘆: <code>{data['country'].split(' ')[0]}</code>"
     )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
+    bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
 def show_country_list(message):
     sorted_countries = [
@@ -369,7 +461,7 @@ def show_country_list(message):
         list_str += f"{idx}. {name} (<code>{code}</code>)\n"
         
     list_str += "\n💡 <i>နိုင်ငံကုဒ် (အသေးစာလုံး) ကို ဆက်လက် ပို့ပေးပါ (ဥပမာ - de, id, jp)</i>"
-    bot.reply_to(message, list_str, reply_markup=get_main_menu())
+    bot.reply_to(message, list_str, reply_markup=get_main_menu(message.from_user.id))
 
 def process_iban_prompt(message):
     if check_cancel(message): return
@@ -392,7 +484,7 @@ def process_iban_prompt(message):
         f"Check Digits: <code>{check_dig}</code>\n"
         f"BBAN: <code>{bank_code}{acc_num}</code>"
     )
-    bot.reply_to(message, text, reply_markup=get_main_menu())
+    bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
 # --- Routing for Text, Auto-Detect & Buttons ---
 @bot.message_handler(func=lambda message: True)
@@ -402,13 +494,13 @@ def handle_all_messages(message):
     text = message.text.strip()
 
     if text in ["🔐 Gen BIN", "/gen"]:
-        bot.reply_to(message, "⏳ <b>BIN Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu())
+        bot.reply_to(message, "⏳ <b>BIN Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code> သို့မဟုတ် <code>62584005116|02|29</code>)", reply_markup=get_main_menu(message.from_user.id))
         return
     elif text in ["👉 Fake Address", "/fake"]:
-        bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>us</code>, <code>de</code>, <code>jp</code>, <code>id</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu())
+        bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>us</code>, <code>de</code>, <code>jp</code>, <code>id</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu(message.from_user.id))
         return
     elif text in ["ℹ️ IBAN Gen", "/iban"]:
-        msg = bot.reply_to(message, "⏳ <b>IBAN Generator</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>DE</code>, <code>GB</code>)", reply_markup=get_main_menu())
+        msg = bot.reply_to(message, "⏳ <b>IBAN Generator</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>DE</code>, <code>GB</code>)", reply_markup=get_main_menu(message.from_user.id))
         bot.register_next_step_handler(msg, process_iban_prompt)
         return
     elif text in ["©️ CPF Gen", "/cpf"]:
@@ -416,6 +508,23 @@ def handle_all_messages(message):
         return
     elif text in ["👤 My Info", "/me"]:
         cmd_me(message)
+        return
+    elif text == "🎁 Giveaway Admin":
+        if message.from_user.id != ADMIN_ID: return
+        gw_text = (
+            "🎁 <b>Giveaway Panel (Admin Only)</b> 🎁\n\n"
+            "👤 <b>လူစာရင်း ထိန်းချုပ်ရန်</b>\n"
+            "<code>/add [name]</code> - လူအသစ်ထည့်ရန်\n"
+            "<code>/gusers</code> - စာရင်းကြည့်ရန်\n"
+            "<code>/clearusers</code> - စာရင်းဖျက်ရန်\n\n"
+            "🎁 <b>ဆုစာရင်း ထိန်းချုပ်ရန်</b>\n"
+            "<code>/addprize [prize]</code> - ဆုထည့်ရန်\n"
+            "<code>/prizes</code> - ဆုစာရင်းကြည့်ရန်\n"
+            "<code>/clearprizes</code> - ဆုအားလုံးဖျက်ရန်\n\n"
+            "🎲 <b>မဲဖောက်ရန်</b>\n"
+            "👉 <code>/pick</code> ကိုနှိပ်ပါ။"
+        )
+        bot.reply_to(message, gw_text, parse_mode="HTML", reply_markup=get_main_menu(message.from_user.id))
         return
     elif text.upper() == "LIST":
         show_country_list(message)

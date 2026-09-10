@@ -453,7 +453,7 @@ def gw_channel_commands(message):
             res = "<b>လက်ရှိ ဆုစာရင်းများ:</b>\n" + "\n".join([f"{i+1}. {p}" for i, p in enumerate(GIVEAWAY_PRIZES)])
             bot.send_message(chat_id, res, parse_mode="HTML")
             
-   elif text_cmd == '/pick':
+    elif text_cmd == '/pick':
         if not GIVEAWAY_PARTICIPANTS:
             bot.send_message(chat_id, "ပါဝင်သူစာရင်း မရှိသေးပါ။ Admin မှ အရင် Add ပေးပါ။")
         elif not GIVEAWAY_PRIZES:
